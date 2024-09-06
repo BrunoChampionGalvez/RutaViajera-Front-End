@@ -10,7 +10,7 @@ const GoogleCustomerRegisterButton = () => {
 
   const handleGoogleRegister = () => {
     window.location.href =
-      "https://back-rutaviajera.onrender.com/auth/api/google/register/customer";
+      "rutaviajera-backend.railway.internal/auth/api/google/register/customer";
   };
 
   useEffect(() => {
