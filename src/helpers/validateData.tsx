@@ -19,7 +19,7 @@ export const validateRegisterForm = (values: IRegisterValues) => {
   }
 
   if (!values.lastName) {
-    errors.lastName = "Nombre requerido";
+    errors.lastName = "Apellido requerido";
   } else if (values.lastName.length < 3 || values.lastName.length > 50) {
     errors.lastName = "El apellido debe tener entre 3 y 50 caracteres";
   }

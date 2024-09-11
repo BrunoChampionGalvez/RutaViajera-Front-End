@@ -237,6 +237,7 @@ export default function RegisterForm() {
     { setSubmitting }: { setSubmitting: (isSubmitting: boolean) => void }
   ) => {
     try {
+      
       const success = await customerRegister(values);
 
       if (success) {

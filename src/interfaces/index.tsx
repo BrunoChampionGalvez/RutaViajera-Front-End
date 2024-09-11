@@ -2,7 +2,7 @@ import { JwtPayload } from "jwt-decode";
 import React from "react";
 
 export interface IUser {
-  id: string;
+  id?: string;
   name: string;
   lastName: string;
   email: string;
@@ -11,11 +11,11 @@ export interface IUser {
   country: string;
   city: string;
   address: string;
-  birthDate: string;
+  birthDate?: string;
 }
 
 export interface IUserResponse extends IUser {
-  isAdmin: boolean;
+  isAdmin?: boolean;
   hotels?: IHotel[];
   reviews?: IReview[];
   bookings?: IBooking[];

@@ -1,11 +1,14 @@
 "use client"
+import { UserContext } from "@/context/userContext";
 import { IEditProfileUser } from "@/interfaces";
 import { putUpdateProfile } from "@/lib/server/fetchUsers";
 import { Field, Form, Formik } from "formik";
 import { useRouter } from "next/navigation";
+import { useContext } from "react";
 
 function FormEditProfileUser() {
-    const router = useRouter()
+  const {setUser, user} = useContext(UserContext)
+  const router = useRouter()
 
   const initialValues: IEditProfileUser = {
     name: "",
@@ -35,7 +38,15 @@ function FormEditProfileUser() {
         console.log("user ID: ", userId);
         
 
-        await putUpdateProfile(userId, formData);
+      await putUpdateProfile(userId, formData);
+      setUser({
+        ...user,
+        ...formData
+      })
+      localStorage.setItem("user", JSON.stringify({
+        ...user,
+        ...formData
+      }))
         alert("Perfil Actualizado Exitosamente.")
         router.push("/dashboard")
     } catch (error) {

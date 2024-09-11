@@ -15,7 +15,7 @@ export const postHotel = async (hotel: IHotelRegister) => {
 
   try {
     const response = await fetch(
-      "rutaviajera-backend.railway.internal/hotels",
+      "http://localhost:3000/hotels",
       {
         method: "POST",
         headers: {
@@ -42,7 +42,7 @@ export const postHotel = async (hotel: IHotelRegister) => {
 export const postRoomType = async (roomType: IRoomType) => {
   const token = typeof window !== "undefined" && localStorage.getItem("token");
   const response = await fetch(
-    "rutaviajera-backend.railway.internal/roomstype",
+    "http://localhost:3000/roomstype",
     {
       method: "POST",
       headers: {
@@ -59,7 +59,7 @@ export const postRoomType = async (roomType: IRoomType) => {
 
 export const postRoom = async (room: ICreateNumberOfRoom) => {
   const token = typeof window !== "undefined" && localStorage.getItem("token");
-  const response = await fetch("rutaviajera-backend.railway.internal/rooms", {
+  const response = await fetch("http://localhost:3000/rooms", {
     method: "POST",
     headers: {
       "Content-Type": "application/json",
@@ -74,7 +74,7 @@ export const postRoom = async (room: ICreateNumberOfRoom) => {
 export const getHotelById = async (id: string) => {
   try {
     const response = await fetch(
-      `rutaviajera-backend.railway.internal/hotels/${id}`,
+      `http://localhost:3000/hotels/${id}`,
       {
         cache: "no-cache",
       }
@@ -95,7 +95,7 @@ export const fetchHotelsByAdminId = async (id: string) => {
   }
 
   const response = await fetch(
-    `rutaviajera-backend.railway.internal/hotels/hotelAdmin/${id}`,
+    `http://localhost:3000/hotels/hotelAdmin/${id}`,
     {
       method: "GET",
       headers: {
@@ -122,7 +122,7 @@ export const fetchHotelsByAdminId = async (id: string) => {
 export const getHotels = async () => {
   try {
     const response = await fetch(
-      "rutaviajera-backend.railway.internal/hotels"
+      "http://localhost:3000/hotels"
     );
     if (response.ok) {
       const data = await response.json();
@@ -139,7 +139,7 @@ export const getHotels = async () => {
 export const getHotelsBySearch = async (searchQuery: string) => {
   try {
     const response = await fetch(
-      `rutaviajera-backend.railway.internal/hotels/search?search=${searchQuery}`
+      `http://localhost:3000/hotels/search?search=${searchQuery}`
     );
     if (response.ok) {
       const data = await response.json();
@@ -178,7 +178,7 @@ export const postBooking = async (booking: {
   const token = typeof window !== "undefined" && localStorage.getItem("token");
   try {
     const response = await fetch(
-      "rutaviajera-backend.railway.internal/bookings",
+      "http://localhost:3000/bookings",
       {
         method: "POST",
         headers: {
@@ -202,7 +202,7 @@ export const postBooking = async (booking: {
 
 // export const postBooking = async (booking: ICreateBooking) => {
 //   const token = typeof window !== "undefined" && localStorage.getItem("token");
-//   const response = await fetch("rutaviajera-backend.railway.internal/bookings", {
+//   const response = await fetch("http://localhost:3000/bookings", {
 //     method: "POST",
 //     headers: {
 //       "Content-Type": "application/json",
@@ -221,7 +221,7 @@ export const getRoomTypesByHotelId = async (
     const token = localStorage.getItem("token");
 
     const response = await fetch(
-      `rutaviajera-backend.railway.internal/roomstype/hotel/${hotelId}`,
+      `http://localhost:3000/roomstype/hotel/${hotelId}`,
       {
         headers: {
           Authorization: `Bearer ${token}`,
@@ -258,7 +258,7 @@ export const updateHotel = async (hotelId: string, hotelData: any) => {
   const token = localStorage.getItem("token");
 
   const response = await fetch(
-    `rutaviajera-backend.railway.internal/hotels/${hotelId}`,
+    `http://localhost:3000/hotels/${hotelId}`,
     {
       method: "PUT",
       headers: {
@@ -285,7 +285,7 @@ export const deleteHotel = async (hotelId: string) => {
   }
 
   const response = await fetch(
-    `rutaviajera-backend.railway.internal/hotels/${hotelId}`,
+    `http://localhost:3000/hotels/${hotelId}`,
     {
       method: "DELETE",
       headers: {

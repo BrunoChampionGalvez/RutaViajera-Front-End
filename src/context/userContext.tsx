@@ -54,6 +54,7 @@ export const UserProvider = ({ children }: { children: React.ReactNode }) => {
     user: Omit<IUser, "id">
   ): Promise<boolean> => {
     try {
+      
       const data = await postCustomerRegister(user);
       console.log(data);
       return true;
@@ -155,7 +156,7 @@ export const UserProvider = ({ children }: { children: React.ReactNode }) => {
 
     try {
       const response = await fetch(
-        `rutaviajera-backend.railway.internal/bookings/hotel/${hotelId}`,
+        `http://localhost:3000/bookings/hotel/${hotelId}`,
         {
           headers: {
             Authorization: `Bearer ${token}`,
