@@ -67,13 +67,15 @@ export interface IHotelierRegisterValues {
 }
 
 export interface IUserContextType {
-  user: IUserResponse | null;
-  setUser: React.Dispatch<React.SetStateAction<IUserResponse | null>>;
+  user: Partial<IUserResponse> | null;
+  setUser: React.Dispatch<React.SetStateAction<Partial<IUserResponse> | null>>;
   isLogged: boolean;
   setIsLogged: (isLogged: boolean) => void;
   isAdmin: boolean;
   setIsAdmin: (isAdmin: boolean) => void;
   login: (credentials: ILogin) => Promise<boolean>;
+  getCustomerDetails: (customerId: string | undefined) => void;
+  getHotelierDetails: (hotelierId: string | undefined) => void;
   customerRegister: (user: Omit<IUser, "id">) => Promise<boolean>;
   hotelierRegister: (user: Omit<IUser, "id">) => Promise<boolean>;
   getReviews: () => void;
@@ -117,6 +119,7 @@ export interface IDecodeToken extends JwtPayload {
   name: string;
   email: string;
   isAdmin: boolean;
+  exp: number
 }
 
 export interface IRoom {

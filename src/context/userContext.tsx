@@ -22,29 +22,32 @@ import { createContext, useCallback, useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import Swal from "sweetalert2";
 import { fetchHotelsByAdminId } from "@/lib/server/fetchHotels";
+import { fetchCustomerDetails, fetchHotelierDetails } from "@/lib/server/fetchUsers";
 
 export const UserContext = createContext<IUserContextType>({
   user: null,
-  setUser: () => {},
+  setUser: () => { },
   isLogged: false,
-  setIsLogged: () => {},
+  setIsLogged: () => { },
   isAdmin: false,
-  setIsAdmin: () => {},
+  setIsAdmin: () => { },
   login: async () => false,
+  getCustomerDetails: async () => { },
+  getHotelierDetails: async () => { },
   customerRegister: async () => false,
   hotelierRegister: async () => false,
-  getReviews: async () => {},
+  getReviews: async () => { },
   reviews: [],
-  getBookings: async () => {},
-  getHotelsByAdmin: async () => {},
-  addNewHotel: async () => {},
+  getBookings: async () => { },
+  getHotelsByAdmin: async () => { },
+  addNewHotel: async () => { },
   getBookingsByHotel: async () => [],
   bookings: [],
-  logOut: () => {},
+  logOut: () => { },
 });
 
 export const UserProvider = ({ children }: { children: React.ReactNode }) => {
-  const [user, setUser] = useState<IUserResponse | null>(null);
+  const [user, setUser] = useState<Partial<IUserResponse> | null>(null);
   const [isLogged, setIsLogged] = useState(false);
   const [isAdmin, setIsAdmin] = useState(false);
   const [reviews, setReviews] = useState<IReviewResponse[]>([]);
@@ -54,7 +57,7 @@ export const UserProvider = ({ children }: { children: React.ReactNode }) => {
     user: Omit<IUser, "id">
   ): Promise<boolean> => {
     try {
-      
+
       const data = await postCustomerRegister(user);
       console.log(data);
       return true;
@@ -100,9 +103,9 @@ export const UserProvider = ({ children }: { children: React.ReactNode }) => {
           reviews: data.user.reviews,
           bookings: data.user.bookings,
         };
+        const tokenExpDate = new Date(decodedToken.exp).getUTCDate()
 
         setUser(user);
-        localStorage.setItem("user", JSON.stringify(user));
         setIsLogged(true);
         setIsAdmin(decodedToken.isAdmin);
         localStorage.setItem("token", data.token);
@@ -114,6 +117,20 @@ export const UserProvider = ({ children }: { children: React.ReactNode }) => {
       return false;
     }
   };
+
+  const getCustomerDetails = async (customerId: string | undefined) => {
+    if (customerId) {
+      const customer = await fetchCustomerDetails(customerId)
+      setUser(customer)
+    }
+  }
+
+  const getHotelierDetails = async (hotelierId: string | undefined) => {
+    if (hotelierId) {
+      const hotelier = await fetchHotelierDetails(hotelierId)
+      setUser(hotelier)
+    }
+  }
 
   const addNewHotel = (newHotel: IHotel) => {
     setUser((prevUser) => {
@@ -217,7 +234,6 @@ export const UserProvider = ({ children }: { children: React.ReactNode }) => {
         setIsLogged(false);
         setIsAdmin(false);
         if (typeof window !== "undefined") {
-          localStorage.removeItem("user");
           localStorage.removeItem("token");
         }
       }
@@ -261,6 +277,8 @@ export const UserProvider = ({ children }: { children: React.ReactNode }) => {
         isAdmin,
         setIsAdmin,
         login,
+        getCustomerDetails,
+        getHotelierDetails,
         hotelierRegister,
         customerRegister,
         getReviews,

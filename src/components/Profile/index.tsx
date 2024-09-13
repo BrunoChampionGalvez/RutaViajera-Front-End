@@ -1,12 +1,38 @@
 "use client";
 import { UserContext } from "@/context/userContext";
+import { IDecodeToken, IUserResponse } from "@/interfaces";
+import { jwtDecode } from "jwt-decode";
 import Image from "next/image";
 import Link from "next/link";
-import { useContext } from "react";
+import { useContext, useEffect } from "react";
 
 export default function Profile() {
-  const { isLogged, user, isAdmin } = useContext(UserContext);
-  console.log(user);
+  const { isLogged, setUser, user, isAdmin, setIsAdmin, getCustomerDetails, getHotelierDetails } = useContext(UserContext);
+  let decodedToken: IDecodeToken
+  const token = localStorage.getItem("token")
+
+  useEffect(() => {
+    if (token) {
+      decodedToken = jwtDecode<IDecodeToken>(token)
+      setUser(decodedToken)
+      setIsAdmin(decodedToken.isAdmin)
+      console.log('isAdmin set: ', decodedToken.isAdmin);
+      
+    }
+  }, [token])
+
+  useEffect(() => {
+    console.log('user: ', user);
+    
+    if (user && !isAdmin) {
+      console.log('no es admin');
+      getCustomerDetails(user.id)
+    } else if (user && isAdmin) {
+      console.log('es admin');
+
+      getHotelierDetails(user.id)
+    }
+  }, [isAdmin])
 
   return (
     <div>
@@ -22,27 +48,27 @@ export default function Profile() {
                   <h1 className="text-4xl font-bold">¡Hola, {user?.name}!</h1>
                 </div>
                 {isAdmin ? (
-                <Link href={"/edit-profile/hotelier"} className="flex px-4 py-3 text-red-600 hover:text-red-700 focus:text-red-700 hover:bg-red-100 focus:bg-red-100 border border-red-600 rounded-md mr-2">
-                  <Image
-                    src={"/edit.png"}
-                    alt="Editar"
-                    width={24}
-                    height={24}
-                    className="invert mr-2"
-                  />
-                  Editar perfil
-                </Link>
-                ):(
+                  <Link href={"/edit-profile/hotelier"} className="flex px-4 py-3 text-red-600 hover:text-red-700 focus:text-red-700 hover:bg-red-100 focus:bg-red-100 border border-red-600 rounded-md mr-2">
+                    <Image
+                      src={"/edit.png"}
+                      alt="Editar"
+                      width={24}
+                      height={24}
+                      className="invert mr-2"
+                    />
+                    Editar perfil
+                  </Link>
+                ) : (
                   <Link href={"/edit-profile/customer"} className="flex px-4 py-3 text-red-600 hover:text-red-700 focus:text-red-700 hover:bg-red-100 focus:bg-red-100 border border-red-600 rounded-md mr-2">
-                  <Image
-                    src={"/edit.png"}
-                    alt="Editar"
-                    width={24}
-                    height={24}
-                    className="invert mr-2"
-                  />
-                  Editar perfil
-                </Link>
+                    <Image
+                      src={"/edit.png"}
+                      alt="Editar"
+                      width={24}
+                      height={24}
+                      className="invert mr-2"
+                    />
+                    Editar perfil
+                  </Link>
                 )}
               </div>
               <div>

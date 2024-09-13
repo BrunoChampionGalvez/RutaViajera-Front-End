@@ -43,10 +43,6 @@ function FormEditProfileUser() {
         ...user,
         ...formData
       })
-      localStorage.setItem("user", JSON.stringify({
-        ...user,
-        ...formData
-      }))
         alert("Perfil Actualizado Exitosamente.")
         router.push("/dashboard")
     } catch (error) {

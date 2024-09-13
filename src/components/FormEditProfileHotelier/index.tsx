@@ -1,11 +1,14 @@
 "use client";
+import { UserContext } from "@/context/userContext";
 import { IEditProfileHotelier } from "@/interfaces";
 import { putUpdateProfileHotelier } from "@/lib/server/fetchUsers";
 import { Field, Form, Formik } from "formik";
 import { useRouter } from "next/navigation";
+import { useContext } from "react";
 
 function FormEditProfileHotelier() {
   const router = useRouter();
+  const { user, setUser } = useContext(UserContext)
 
   const initialValues: IEditProfileHotelier = {
     name: "",
@@ -41,6 +44,10 @@ function FormEditProfileHotelier() {
       console.log("user ID: ", userId);
 
       await putUpdateProfileHotelier(userId, formData);
+      setUser({
+        ...user,
+        ...formData
+      })
       alert("Perfil Actualizado Exitosamente.");
       router.push("/dashboard");
     } catch (error) {
@@ -156,7 +163,7 @@ function FormEditProfileHotelier() {
                     name="birthDate"
                     className="formInput"
                   />
-                  
+
                 </div>
                 <div className="flex justify-center">
                   <button

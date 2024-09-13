@@ -214,7 +214,7 @@ export const putUpdateProfileHotelier = async (
     const token =
       typeof window !== "undefined" && localStorage.getItem("token");
     const response = await fetch(
-      `http://localhost:3000/${userId}`,
+      `http://localhost:3000/hotel-admins/${userId}`,
       {
         method: "PUT",
         headers: {
@@ -289,3 +289,44 @@ export const cancelBooking = async (bookingId: string) => {
     `Error en la solicitud: ${response.status} - ${response.statusText}: ${text}`
   );
 };
+
+export const fetchCustomerDetails = async (customerId: string) => {
+  const token = localStorage.getItem("token");
+  console.log('1 fetchCustomerDetails');
+  
+  const response = await fetch(
+    `http://localhost:3000/customers/${customerId}`,
+    {
+      method: "GET",
+      headers: {
+        Authorization: `Bearer: ${token}`,
+      }
+    }
+  );
+  console.log('2 fetchCustomerDetails');
+
+
+  if (!response.ok) throw new Error('Error in fetching the customer details.')
+  return response.json()
+}
+
+export const fetchHotelierDetails = async (hotelierId: string) => {
+  const token = localStorage.getItem("token");
+
+  console.log('1 fetchHotelierDetails');
+
+  const response = await fetch(
+    `http://localhost:3000/hotel-admins/${hotelierId}`,
+    {
+      method: "GET",
+      headers: {
+        Authorization: `Bearer: ${token}`,
+      }
+    }
+  );
+
+  console.log('2 fetchHotelierDetails');
+
+  if (!response.ok) throw new Error('Error in fetching the hotel admin details.')
+  return response.json()
+}
