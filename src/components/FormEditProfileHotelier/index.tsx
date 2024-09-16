@@ -1,14 +1,17 @@
 "use client";
 import { UserContext } from "@/context/userContext";
-import { IEditProfileHotelier } from "@/interfaces";
+import { IDecodeToken, IEditProfileHotelier } from "@/interfaces";
 import { putUpdateProfileHotelier } from "@/lib/server/fetchUsers";
 import { Field, Form, Formik } from "formik";
+import { jwtDecode } from "jwt-decode";
 import { useRouter } from "next/navigation";
-import { useContext } from "react";
+import { useContext, useEffect, useState } from "react";
 
 function FormEditProfileHotelier() {
   const router = useRouter();
   const { user, setUser } = useContext(UserContext)
+  let decodedToken: IDecodeToken
+  const [userId, setUserId] = useState<string>("")
 
   const initialValues: IEditProfileHotelier = {
     name: "",
@@ -21,26 +24,21 @@ function FormEditProfileHotelier() {
     birthDate: ""
   };
 
+  useEffect(() => {
+    const token = localStorage.getItem("token")
+    if (token) decodedToken = jwtDecode<IDecodeToken>(token)
+    setUserId(decodedToken.id)
+  }, [])
+
   const handleSubmit = async (
     values: IEditProfileHotelier,
     { setSubmitting }: { setSubmitting: (isSubmitting: boolean) => void }
   ) => {
-    const storedUser = localStorage.getItem("user");
-    if (!storedUser) {
-      console.log(
-        "No se encontró información del usuario en el almacenamiento local."
-      );
-      setSubmitting(false);
-      return;
-    }
-
     const formData = {
       ...values,
     };
 
     try {
-      const userobject = JSON.parse(storedUser);
-      const userId = userobject.id;
       console.log("user ID: ", userId);
 
       await putUpdateProfileHotelier(userId, formData);

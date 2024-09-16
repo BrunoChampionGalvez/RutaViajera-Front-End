@@ -157,7 +157,7 @@ export interface IRoomTypeRegister {
   hotelId: string;
 }
 
-export interface IHotelRegister {
+export interface IHotelRegisterInitialValues {
   name: string;
   description: string;
   email: string;
@@ -168,7 +168,22 @@ export interface IHotelRegister {
   totalRooms: number;
   services: string[];
   rating: number;
-  images: string[] | File[];
+  images: File[] | File;
+  hotel_admin_id: string;
+}
+
+export interface IHotelRegisterPost {
+  name: string;
+  description: string;
+  email: string;
+  country: string;
+  city: string;
+  address: string;
+  location: number[];
+  totalRooms: number;
+  services: string[];
+  rating: number;
+  images: string[];
   hotel_admin_id: string;
 }
 
@@ -240,7 +255,7 @@ export interface IHotel {
 export interface IHotelContextType {
   hotels: IHotel[] | null;
   setHotels: React.Dispatch<React.SetStateAction<IHotel[] | null>>;
-  addHotel: (hotel: IHotelRegister) => Promise<boolean>;
+  addHotel: (hotel: IHotelRegisterPost) => Promise<boolean>;
   fetchHotels: () => Promise<IHotelDetail[]>;
   fetchBookingsByHotel: (hotelId: string) => Promise<IBooking[]>;
   fetchRoomsByHotel: (hotelId: string) => Promise<IRoom[]>;

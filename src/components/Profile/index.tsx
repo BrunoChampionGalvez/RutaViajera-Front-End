@@ -4,35 +4,35 @@ import { IDecodeToken, IUserResponse } from "@/interfaces";
 import { jwtDecode } from "jwt-decode";
 import Image from "next/image";
 import Link from "next/link";
-import { useContext, useEffect } from "react";
+import { useContext, useEffect, useState } from "react";
 
 export default function Profile() {
   const { isLogged, setUser, user, isAdmin, setIsAdmin, getCustomerDetails, getHotelierDetails } = useContext(UserContext);
   let decodedToken: IDecodeToken
-  const token = localStorage.getItem("token")
-
+  const [userId, setUserId] = useState<string>("")
+  
   useEffect(() => {
+    const token = localStorage.getItem("token")
     if (token) {
       decodedToken = jwtDecode<IDecodeToken>(token)
-      setUser(decodedToken)
-      setIsAdmin(decodedToken.isAdmin)
+      setUserId(decodedToken.id)
       console.log('isAdmin set: ', decodedToken.isAdmin);
       
     }
-  }, [token])
+  }, [])
 
   useEffect(() => {
     console.log('user: ', user);
     
-    if (user && !isAdmin) {
+    if (!isAdmin) {
       console.log('no es admin');
-      getCustomerDetails(user.id)
-    } else if (user && isAdmin) {
+      getCustomerDetails(userId)
+    } else {
       console.log('es admin');
 
-      getHotelierDetails(user.id)
+      getHotelierDetails(userId)
     }
-  }, [isAdmin])
+  }, [userId])
 
   return (
     <div>

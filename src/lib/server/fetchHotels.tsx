@@ -1,11 +1,11 @@
 import {
   ICreateBooking,
   ICreateNumberOfRoom,
-  IHotelRegister,
+  IHotelRegisterPost,
   IRoomType,
 } from "@/interfaces";
 
-export const postHotel = async (hotel: IHotelRegister) => {
+export const postHotel = async (hotel: IHotelRegisterPost) => {
   const token = localStorage.getItem("token");
   if (!token) {
     throw new Error(

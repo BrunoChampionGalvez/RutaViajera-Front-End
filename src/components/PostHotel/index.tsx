@@ -1,7 +1,7 @@
 "use client";
 
 import { validatePostHotel } from "@/helpers/validateData";
-import { IHotelRegister, ILocationDetail } from "@/interfaces";
+import { IHotelRegisterInitialValues, ILocationDetail } from "@/interfaces";
 import { Formik, Form, Field, ErrorMessage } from "formik";
 import Image from "next/image";
 import continueImage from "../../../public/continue.png";
@@ -13,7 +13,7 @@ import { postHotel } from "@/lib/server/fetchHotels";
 import { UserContext } from "@/context/userContext";
 import Link from "next/link";
 
-interface HotelRegisterProps {}
+interface HotelRegisterProps { }
 
 const HotelRegister: React.FC<HotelRegisterProps> = () => {
   const { user, isAdmin, addNewHotel } = useContext(UserContext);
@@ -23,7 +23,7 @@ const HotelRegister: React.FC<HotelRegisterProps> = () => {
   );
   const { mapCenter, marker } = useGoogleMapsData(hotelLocation);
 
-  const initialValues: IHotelRegister = {
+  const initialValues: IHotelRegisterInitialValues = {
     name: "",
     description: "",
     email: "",
@@ -234,8 +234,23 @@ const HotelRegister: React.FC<HotelRegisterProps> = () => {
     "Zimbabue",
   ];
 
+  const [selectedBuffers, setSelectedBuffers] = useState<Uint8Array[]>([])
+  const handleImagesSelection = async (event: React.ChangeEvent<HTMLInputElement>) => {
+    const files = event.target.files
+    if (files) {
+      const filesArray = Array.from(files)
+      for (let i = 0; i < filesArray.length; i++) {
+        const file = filesArray[i]
+        const arrayBuffer = await file.arrayBuffer()
+        const buffer = new Uint8Array(arrayBuffer)
+
+        setSelectedBuffers((prevFiles) => [...prevFiles, buffer])
+      }
+    }
+  }
+
   const handleSubmit = async (
-    values: IHotelRegister,
+    values: IHotelRegisterInitialValues,
     { setSubmitting }: { setSubmitting: (isSubmitting: boolean) => void }
   ) => {
     const token = localStorage.getItem("token");
@@ -244,29 +259,25 @@ const HotelRegister: React.FC<HotelRegisterProps> = () => {
       setSubmitting(false);
       return;
     }
+    
+    const buffersToUpload = {
+      buffers: selectedBuffers.map(buffer => Array.from(buffer)) // Convert Uint8Array to array of numbers
+    };
+    
+    console.log(buffersToUpload);
+    
 
-    let imageUrls: string[] = [];
-    if (values.images && values.images.length > 0) {
-      try {
-        for (const file of values.images) {
-          if (file instanceof File) {
-            const imageUrl = await uploadImageToCloudinary(file);
-            imageUrls.push(imageUrl);
-          } else if (typeof file === "string") {
-            imageUrls.push(file);
-          }
-        }
-      } catch (error) {
-        console.log("Error al subir la imagen: ", error);
-        alert("Error al subir la imagen. Inténtalo de nuevo.");
-        setSubmitting(false);
-        return;
-      }
-    }
+    const response = await fetch('/api/upload-hotel-images', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(buffersToUpload)
+    })
+
+    const uploadedUrls = await response.json()
 
     const formData = {
       ...values,
-      images: imageUrls,
+      images: uploadedUrls,
       hotel_admin_id: user?.id || "",
     };
 
@@ -288,35 +299,6 @@ const HotelRegister: React.FC<HotelRegisterProps> = () => {
       );
     } finally {
       setSubmitting(false);
-    }
-  };
-
-  const uploadImageToCloudinary = async (file: File): Promise<string> => {
-    const formData = new FormData();
-    formData.append("file", file);
-    formData.append(
-      "upload_preset",
-      process.env.NEXT_PUBLIC_CLOUDINARY_UPLOAD_PRESET || ""
-    );
-
-    try {
-      const response = await fetch(
-        `https://api.cloudinary.com/v1_1/${process.env.NEXT_PUBLIC_CLOUDINARY_CLOUD_NAME}/image/upload`,
-        {
-          method: "POST",
-          body: formData,
-        }
-      );
-
-      const data = await response.json();
-      if (data.secure_url) {
-        return data.secure_url;
-      } else {
-        throw new Error("No se recibió el enlace de la imagen");
-      }
-    } catch (error) {
-      console.error("Error al subir la imagen a Cloudinary:", error);
-      throw new Error("Error al subir la imagen");
     }
   };
 
@@ -519,35 +501,13 @@ const HotelRegister: React.FC<HotelRegisterProps> = () => {
                     <label htmlFor="images" className="formLabel">
                       Imagen del hotel
                     </label>
-                    <Field name="images">
-                      {({ field }: any) => (
-                        <input
-                          type="file"
-                          multiple
-                          onChange={async (e) => {
-                            if (e.target.files && e.target.files.length > 0) {
-                              const files = Array.from(e.target.files);
-                              const uploadedUrls = [];
-
-                              for (const file of files) {
-                                const imageUrl = await uploadImageToCloudinary(
-                                  file
-                                );
-                                uploadedUrls.push(imageUrl);
-                              }
-
-                              setFieldValue("images", uploadedUrls);
-                            }
-                          }}
-                          className="formInput"
-                        />
-                      )}
-                    </Field>
-                    <ErrorMessage
+                    <input
+                      type="file"
+                      multiple
                       name="images"
-                      component="div"
-                      className="text-red-500"
+                      onChange={handleImagesSelection}
                     />
+                    <ErrorMessage name="images" component="div" className="text-red-500" />
                   </div>
                   <div>
                     <button

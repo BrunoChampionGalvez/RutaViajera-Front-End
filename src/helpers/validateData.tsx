@@ -2,7 +2,7 @@ import * as yup from "yup";
 import {
   ICreateBooking,
   IHotelErrors,
-  IHotelRegister,
+  IHotelRegisterInitialValues,
   ILogin,
   IPostReview,
   IRegisterValues,
@@ -125,7 +125,7 @@ export const validateEmail = (values: Partial<ILogin>) => {
   return errors;
 };
 
-export const validatePostHotel = (values: IHotelRegister) => {
+export const validatePostHotel = (values: IHotelRegisterInitialValues) => {
   const errors: Partial<IHotelErrors> = {};
 
   if (!values.name) {
@@ -162,6 +162,28 @@ export const validatePostHotel = (values: IHotelRegister) => {
     errors.address = "Dirección requerida";
   }
 
+  const validImageTypes = ['image/jpeg', 'image/png', 'image/gif', 'image/webp'];
+
+  if (!values.images) {
+    errors.images = "Debe subir al menos una imagen.";
+  } else if (Array.isArray(values.images)) {
+    if (values.images.length > 5) errors.images = "No puede subir más de 5 imágenes.";
+    // Check if all files are images and their size is less than 5MB
+    values.images.forEach((image: File, index: number) => {
+      if (!validImageTypes.includes(image.type)) {
+        errors.images = errors.images || `El archivo en la posición ${index + 1} no es una imagen válida.`;
+      } else if (image.size > 5 * 1024 * 1024) { // 5MB limit
+        errors.images = errors.images || `La imagen en la posición ${index + 1} es mayor a 5MB.`;
+      }
+    });
+  } else {
+    console.log('Images:', values.images);
+    if (!validImageTypes.includes(values.images.type)) {
+      errors.images = errors.images || `El archivo no es una imagen válida.`;
+    } else if (values.images.size > 5 * 1024 * 1024) { // 5MB limit
+      errors.images = errors.images || `La imagen es mayor a 5MB.`;
+    }
+  }
   return errors;
 };
 

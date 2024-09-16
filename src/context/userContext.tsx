@@ -126,8 +126,16 @@ export const UserProvider = ({ children }: { children: React.ReactNode }) => {
   }
 
   const getHotelierDetails = async (hotelierId: string | undefined) => {
+    console.log("hotelierId: ", hotelierId);
+    
     if (hotelierId) {
+      console.log('hola');
+      
       const hotelier = await fetchHotelierDetails(hotelierId)
+      console.log('hola 2');
+
+      console.log("hotelier: ", hotelier);
+      
       setUser(hotelier)
     }
   }
@@ -141,14 +149,6 @@ export const UserProvider = ({ children }: { children: React.ReactNode }) => {
         hotels: [...(prevUser.hotels || []), newHotel],
       };
     });
-
-    localStorage.setItem(
-      "user",
-      JSON.stringify({
-        ...user,
-        hotels: [...(user?.hotels || []), newHotel],
-      })
-    );
   };
 
   const getHotelsByAdmin = useCallback(async (adminId: string) => {

@@ -328,5 +328,6 @@ export const fetchHotelierDetails = async (hotelierId: string) => {
   console.log('2 fetchHotelierDetails');
 
   if (!response.ok) throw new Error('Error in fetching the hotel admin details.')
-  return response.json()
+  const json = await response.json()
+  return json
 }

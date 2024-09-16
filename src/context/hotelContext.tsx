@@ -5,7 +5,7 @@ import {
   IHotel,
   IHotelContextType,
   IHotelDetail,
-  IHotelRegister,
+  IHotelRegisterPost,
 } from "@/interfaces";
 import {
   deleteHotel,
@@ -37,7 +37,7 @@ export const HotelContext = createContext<IHotelContextType>({
 export const HotelProvider = ({ children }: { children: React.ReactNode }) => {
   const [hotels, setHotels] = useState<IHotel[] | null>([]);
 
-  const addHotel = async (hotel: IHotelRegister) => {
+  const addHotel = async (hotel: IHotelRegisterPost) => {
     try {
       const data = await postHotel(hotel);
       console.log("data:", data);
