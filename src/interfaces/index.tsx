@@ -132,7 +132,7 @@ export interface IRoom {
 
 export interface ICreateNumberOfRoom {
   roomNumber: string;
-  roomsTypeId: string;
+  roomsTypeId: string | null;
 }
 export interface IRoomType {
   id: string;
@@ -254,7 +254,11 @@ export interface IHotel {
 
 export interface IHotelContextType {
   hotels: IHotel[] | null;
+  hotelBeingCreated: IHotel | null;
+  setHotelBeingCreated: React.Dispatch<React.SetStateAction<IHotel | null>>;
   setHotels: React.Dispatch<React.SetStateAction<IHotel[] | null>>;
+  roomTypeIdBeingCreated: string | null;
+  setRoomTypeIdBeingCreated: React.Dispatch<React.SetStateAction<string | null>>;
   addHotel: (hotel: IHotelRegisterPost) => Promise<boolean>;
   fetchHotels: () => Promise<IHotelDetail[]>;
   fetchBookingsByHotel: (hotelId: string) => Promise<IBooking[]>;

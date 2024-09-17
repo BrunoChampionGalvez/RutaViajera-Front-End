@@ -10,9 +10,11 @@ import { useContext, useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import Swal from "sweetalert2";
 import { UserContext } from "@/context/userContext";
+import { HotelContext } from "@/context/hotelContext";
 
 export default function TypesRegister() {
   const { isAdmin, user } = useContext(UserContext);
+  const { setRoomTypeIdBeingCreated } = useContext(HotelContext)
   const router = useRouter();
   const [hotelId, setHotelId] = useState<string>("");
 
@@ -74,34 +76,38 @@ export default function TypesRegister() {
     values: IRoomTypeRegister,
     { setSubmitting }: { setSubmitting: (isSubmitting: boolean) => void }
   ) => {
-    let imageUrls: string[] = [];
-    if (values.images && values.images.length > 0) {
-      try {
-        for (const file of values.images) {
-          const imageUrl = await uploadImageToCloudinary(file);
-          imageUrls.push(imageUrl);
-        }
-      } catch (error) {
-        console.log("Error al subir la imagen: ", error);
-        alert("Error al subir la imagen. Inténtalo de nuevo");
-        setSubmitting(false);
-        return;
-      }
+    const token = localStorage.getItem("token");
+    if (!token) {
+      alert("Hubo un problema. Por favor, inicie sesión de nuevo.");
+      setSubmitting(false);
+      return;
     }
+
+    const buffersToUpload = {
+      buffers: selectedBuffers.map(buffer => Array.from(buffer)) // Convert Uint8Array to array of numbers
+    };
+
+    const response = await fetch('/api/upload-hotel-images', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(buffersToUpload)
+    })
+
+    let uploadedUrls: string[] = await response.json()
 
     const formData = {
       ...values,
-      images: imageUrls,
+      images: uploadedUrls,
       hotelId: hotelId || values.hotelId,
     };
 
-    console.log("Datos enviados: ", formData);
+    console.log("Datos enviados al back: ", formData);
 
     try {
       const response = await postRoomType(formData);
-      console.log("Datos enviados: ", response);
+      setRoomTypeIdBeingCreated(response)
       Swal.fire({
-        position: "top-end",
+        position: "top",
         icon: "success",
         title: "Tipo de habitación registrado exitosamente",
         showConfirmButton: true,
@@ -120,6 +126,21 @@ export default function TypesRegister() {
       setSubmitting(false);
     }
   };
+
+  const [selectedBuffers, setSelectedBuffers] = useState<Uint8Array[]>([])
+  const handleImagesSelection = async (event: React.ChangeEvent<HTMLInputElement>) => {
+    const files = event.target.files
+    if (files) {
+      const filesArray = Array.from(files)
+      for (let i = 0; i < filesArray.length; i++) {
+        const file = filesArray[i]
+        const arrayBuffer = await file.arrayBuffer()
+        const buffer = new Uint8Array(arrayBuffer)
+
+        setSelectedBuffers((prevFiles) => [...prevFiles, buffer])
+      }
+    }
+  }
 
   return (
     <div className="flex min-h-screen items-center justify-center">
@@ -208,14 +229,8 @@ export default function TypesRegister() {
                     <input
                       type="file"
                       multiple
-                      onChange={(event) => {
-                        const files = event.target.files;
-                        if (files) {
-                          const fileArray = Array.from(files);
-                          setFieldValue("images", fileArray);
-                        }
-                      }}
-                      className="formInput"
+                      name="images"
+                      onChange={handleImagesSelection}
                     />
                     <ErrorMessage
                       name="images"

@@ -53,22 +53,36 @@ export const postRoomType = async (roomType: IRoomType) => {
     }
   );
 
+  if (!response.ok) throw new Error('Error in posting the room type.')
   const data = await response.text();
   return data;
 };
 
-export const postRoom = async (room: ICreateNumberOfRoom) => {
+export const postRoom = async (rooms: string[], roomTypeId: string | null) => {
   const token = typeof window !== "undefined" && localStorage.getItem("token");
-  const response = await fetch("http://localhost:3000/rooms", {
-    method: "POST",
-    headers: {
-      "Content-Type": "application/json",
-      Authorization: `Bearer ${token}`,
-    },
-    body: JSON.stringify(room),
-  });
-  const data = await response.json();
-  return data;
+  for (const room of rooms) {
+    try {
+      const roomObjectToSend = {
+        roomNumber: room,
+        roomsTypeId: roomTypeId
+      }
+      const response = await fetch("http://localhost:3000/rooms", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${token}`,
+        },
+        body: JSON.stringify(roomObjectToSend),
+      });
+      if (!response.ok) throw new Error('Error posting rooms.')
+      const data = await response.json();
+      console.log(data);
+      
+      return data;
+    } catch {
+      console.error(`Error post room with roomNumber ${room}`)
+    }
+  }
 };
 
 export const getHotelById = async (id: string) => {

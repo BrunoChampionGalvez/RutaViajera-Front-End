@@ -6,6 +6,7 @@ import {
   IHotelContextType,
   IHotelDetail,
   IHotelRegisterPost,
+  IRoomType,
 } from "@/interfaces";
 import {
   deleteHotel,
@@ -21,7 +22,11 @@ import { createContext, useCallback, useEffect, useState } from "react";
 
 export const HotelContext = createContext<IHotelContextType>({
   hotels: null,
-  setHotels: () => {},
+  hotelBeingCreated: null,
+  setHotelBeingCreated: () => {},
+  setHotels: () => { },
+  roomTypeIdBeingCreated: null,
+  setRoomTypeIdBeingCreated: async () => false,
   addHotel: async () => false,
   fetchHotels: async () => [],
   fetchBookingsByHotel: async () => [],
@@ -36,6 +41,8 @@ export const HotelContext = createContext<IHotelContextType>({
 
 export const HotelProvider = ({ children }: { children: React.ReactNode }) => {
   const [hotels, setHotels] = useState<IHotel[] | null>([]);
+  const [hotelBeingCreated, setHotelBeingCreated] = useState<IHotel | null>(null)
+  const [roomTypeIdBeingCreated, setRoomTypeIdBeingCreated] = useState<string | null>(null)
 
   const addHotel = async (hotel: IHotelRegisterPost) => {
     try {
@@ -214,7 +221,11 @@ export const HotelProvider = ({ children }: { children: React.ReactNode }) => {
     <HotelContext.Provider
       value={{
         hotels,
+        hotelBeingCreated,
         setHotels,
+        setHotelBeingCreated,
+        roomTypeIdBeingCreated,
+        setRoomTypeIdBeingCreated,
         addHotel,
         fetchHotels,
         fetchBookingsByHotel,

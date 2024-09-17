@@ -12,11 +12,13 @@ import { useRouter } from "next/navigation";
 import { postHotel } from "@/lib/server/fetchHotels";
 import { UserContext } from "@/context/userContext";
 import Link from "next/link";
+import { HotelContext } from "@/context/hotelContext";
 
 interface HotelRegisterProps { }
 
 const HotelRegister: React.FC<HotelRegisterProps> = () => {
   const { user, isAdmin, addNewHotel } = useContext(UserContext);
+  const { setHotelBeingCreated } = useContext(HotelContext)
   const router = useRouter();
   const [hotelLocation, setHotelLocation] = useState<ILocationDetail | null>(
     null
@@ -255,7 +257,7 @@ const HotelRegister: React.FC<HotelRegisterProps> = () => {
   ) => {
     const token = localStorage.getItem("token");
     if (!token) {
-      alert("No se encontró el token. Por favor, inicie sesión de nuevo.");
+      alert("Hubo un problema. Por favor, inicie sesión de nuevo.");
       setSubmitting(false);
       return;
     }
@@ -264,9 +266,6 @@ const HotelRegister: React.FC<HotelRegisterProps> = () => {
       buffers: selectedBuffers.map(buffer => Array.from(buffer)) // Convert Uint8Array to array of numbers
     };
     
-    console.log(buffersToUpload);
-    
-
     const response = await fetch('/api/upload-hotel-images', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
@@ -286,7 +285,10 @@ const HotelRegister: React.FC<HotelRegisterProps> = () => {
     try {
       const createdHotel = await postHotel(formData);
       if (createdHotel) {
+        console.log('createdHotel:', createdHotel);
+        
         addNewHotel(createdHotel);
+        setHotelBeingCreated(createdHotel)
         alert("Hotel registrado exitosamente");
         router.push("/post-hotel-types");
       } else {

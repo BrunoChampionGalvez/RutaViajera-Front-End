@@ -6,6 +6,7 @@ import {
   IHotel,
   ILoginUser,
   IReviewResponse,
+  IRoomType,
   IUser,
   IUserContextType,
   IUserResponse,
