@@ -152,7 +152,7 @@ export interface IRoomTypeRegister {
   capacity: number;
   totalBathrooms: number;
   totalBeds: number;
-  images: string[];
+  images: any[];
   price: number;
   hotelId: string;
 }

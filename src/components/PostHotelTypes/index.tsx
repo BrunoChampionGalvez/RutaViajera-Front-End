@@ -11,12 +11,15 @@ import { useRouter } from "next/navigation";
 import Swal from "sweetalert2";
 import { UserContext } from "@/context/userContext";
 import { HotelContext } from "@/context/hotelContext";
+import { FaArrowDown } from "react-icons/fa";
+import { CiSaveUp2 } from "react-icons/ci";
 
 export default function TypesRegister() {
   const { isAdmin, user } = useContext(UserContext);
   const { setRoomTypeIdBeingCreated } = useContext(HotelContext)
   const router = useRouter();
   const [hotelId, setHotelId] = useState<string>("");
+  const [roomTypes, setRoomTypes] = useState<Partial<IRoomTypeRegister>[]>([])
 
   const [initialValues, setInitialValues] = useState<IRoomTypeRegister>({
     name: "",
@@ -72,6 +75,17 @@ export default function TypesRegister() {
     }
   };
 
+  const handleAddRoomType = (
+    values: IRoomTypeRegister,
+    { setSubmitting }: { setSubmitting: (isSubmitting: boolean) => void }
+  ) => {
+    setRoomTypes(prevRoomTypes => [...prevRoomTypes, {
+      ...values,
+      images: selectedBuffers.map(buffer => Array.from(buffer)) // Convert Uint8Array to array of numbers
+    }])
+    setSelectedBuffers([])
+  }
+
   const handleSubmit = async (
     values: IRoomTypeRegister,
     { setSubmitting }: { setSubmitting: (isSubmitting: boolean) => void }
@@ -83,48 +97,47 @@ export default function TypesRegister() {
       return;
     }
 
-    const buffersToUpload = {
-      buffers: selectedBuffers.map(buffer => Array.from(buffer)) // Convert Uint8Array to array of numbers
-    };
+    for (const roomType of roomTypes) {
+      const response = await fetch('/api/upload-hotel-images', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(roomType.images)
+      })
 
-    const response = await fetch('/api/upload-hotel-images', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(buffersToUpload)
-    })
+      let uploadedUrls: string[] = await response.json()
 
-    let uploadedUrls: string[] = await response.json()
+      const formData = {
+        ...values,
+        images: uploadedUrls,
+        hotelId: hotelId || values.hotelId,
+      };
 
-    const formData = {
-      ...values,
-      images: uploadedUrls,
-      hotelId: hotelId || values.hotelId,
-    };
+      console.log("Datos enviados al back: ", formData);
 
-    console.log("Datos enviados al back: ", formData);
-
-    try {
-      const response = await postRoomType(formData);
-      setRoomTypeIdBeingCreated(response)
-      Swal.fire({
-        position: "top",
-        icon: "success",
-        title: "Tipo de habitación registrado exitosamente",
-        showConfirmButton: true,
-        timer: 4000,
-      });
-      router.push("/rooms-number");
-    } catch (error) {
-      console.error(error);
-      Swal.fire({
-        icon: "error",
-        title: "Oops...",
-        text: "Ha ocurrido un error",
-        timer: 4000,
-      });
-    } finally {
-      setSubmitting(false);
+      try {
+        const response = await postRoomType(formData);
+        setRoomTypeIdBeingCreated(response)
+        Swal.fire({
+          position: "top",
+          icon: "success",
+          title: "Tipo de habitación registrado exitosamente",
+          showConfirmButton: true,
+          timer: 4000,
+        });
+        router.push("/rooms-number");
+      } catch (error) {
+        console.error(error);
+        Swal.fire({
+          icon: "error",
+          title: "Oops...",
+          text: "Ha ocurrido un error",
+          timer: 4000,
+        });
+      } finally {
+        setSubmitting(false);
+      }
     }
+
   };
 
   const [selectedBuffers, setSelectedBuffers] = useState<Uint8Array[]>([])
@@ -156,7 +169,7 @@ export default function TypesRegister() {
                 tiene tu hotel antes de continuar
               </p>
             </div>
-            <Formik initialValues={initialValues} onSubmit={handleSubmit}>
+            <Formik initialValues={initialValues} onSubmit={handleAddRoomType}>
               {({ isSubmitting, setFieldValue }) => (
                 <Form className="space-y-2">
                   <div className="formDiv flex-1 mr-2">
@@ -265,7 +278,7 @@ export default function TypesRegister() {
                           "Creando..."
                         ) : (
                           <div className="flex items-center">
-                            <h1 className="mr-1">Guardar</h1>
+                            <h1 className="mr-1">Agregar</h1>
                             <Image
                               src={createImage}
                               alt="Crear"
@@ -283,7 +296,7 @@ export default function TypesRegister() {
           </div>
         </div>
       ) : (
-        <div className="flex items-center justify-center bg-gray-100">
+        <div className="flex items-center justify-center w-full bg-gray-100">
           <div className=" max-w-md bg-white shadow-md rounded-md p-4 text-center">
             <Image
               src="/logo.png"
@@ -301,7 +314,32 @@ export default function TypesRegister() {
             </Link>
           </div>
         </div>
-      )}
+      )},
+      {roomTypes.length > 0 &&
+        <section className={`transition-all duration-200 ease-in-out ${roomTypes.length > 0 ? 'block' : 'hidden'}`}>
+          <div className="mx-auto">
+            <div>
+              <h1 className="text-4xl mb-2 pb-2 text-center font-bold">Tipos de Habitación</h1>
+              <p className="text-gray-600">Estos tipos de habitación todavía no se han guardado. Presiona en el botón de <b>Guardar</b> de la derecha para que se guarden.</p>
+            </div>
+            <button className="btn-secondary">
+              Guardar
+              <CiSaveUp2 />
+            </button>
+          </div>
+          <div className="flex">
+            {roomTypes.map(roomType => (
+              <div key={roomType.id}>
+                <p>{roomType.name}</p>
+                <div>
+                  <p>Ver detalles</p>
+                  <FaArrowDown />
+                </div>
+              </div>
+            ))}
+          </div>
+        </section>
+      }
     </div>
   );
 }
