@@ -21,6 +21,17 @@ export default function TypesRegister() {
   const router = useRouter();
   const [hotelId, setHotelId] = useState<string>("");
   const [roomTypes, setRoomTypes] = useState<Partial<IRoomTypeRegister>[]>([])
+  const [visibleName, setVisibleName] = useState<string | undefined>(undefined);
+  const [visibleRoomType, setVisibleRoomType] = useState<Partial<IRoomTypeRegister> | null>(null)
+
+  const toggleRoomTypeDetailsName = (name: string | undefined) => {
+    setVisibleName(visibleName === name ? undefined : name);
+    for (const roomType of roomTypes) {
+      if (roomType.name === visibleName) {
+        setVisibleRoomType(roomType)
+      }
+    }
+  };
 
   const [initialValues, setInitialValues] = useState<IRoomTypeRegister>({
     name: "",
@@ -141,7 +152,6 @@ export default function TypesRegister() {
     }
 
   };
-
   const [selectedBuffers, setSelectedBuffers] = useState<Uint8Array[]>([])
   const handleImagesSelection = async (event: React.ChangeEvent<HTMLInputElement>) => {
     const files = event.target.files
@@ -316,16 +326,16 @@ export default function TypesRegister() {
             </Link>
           </div>
         </div>
-      )},
+      )}
       {roomTypes.length > 0 &&
         <section className={`place-self-start p-8 w-full transition-all duration-200 ease-in-out ${roomTypes.length > 0 ? 'block' : 'hidden'}`}>
-          <div className="mx-auto mb-8">
+          <div className="mx-auto mb-5">
             <div className="flex justify-center items-center gap-8 mb-2 pb-2">
               <h1 className="text-4xl text-center font-bold w-max">Tipos de<br />Habitación</h1>
               <div className="w-max">
-                <button className="btn-secondary text-2xl text-center flex items-center justify-center">
+                <button className="btn-secondary !text-md text-center flex items-center justify-center">
                   Guardar
-                  <IconContext.Provider value={{ size: "1.3em", className: "ml-2" }}>
+                  <IconContext.Provider value={{ size: "1.8em", className: "ml-2" }}>
 
                     <CiSaveUp2 />
                   </IconContext.Provider>
@@ -333,20 +343,33 @@ export default function TypesRegister() {
                 </button>
               </div>
             </div>
-            <p className="text-gray-600 text-center w-4/6 mx-auto mb-2">Estos tipos de habitación no se han guardado. Presiona el botón <b>Guardar</b> de arriba para que se guarden.</p>
+            <p className="text-gray-600 text-center w-4/6 mx-auto">Estos tipos de habitación no se han guardado. Presiona el botón <b>Guardar</b> de arriba para que se guarden.</p>
           </div>
-          <div className="flex w-4/6 mx-auto">
+          <div className="flex justify-around w-5/6 gap-2 flex-wrap mx-auto">
             {roomTypes.map(roomType => (
-              <div className="flex flex-col gap-1 w-max" key={roomType.id}>
-                <p className="font-bold text-2xl text-gray-900">{roomType.name}</p>
-                <div className="w-32 justify-start items-center flex gap-1">
-                  <p className="text-gray-600">Ver detalles</p>
-                  <IconContext.Provider value={{ className: "text-gray-500" }}>
+              <div className="w-max relative">
 
-                    <FaArrowDown />
-                  </IconContext.Provider>
+                <div className="-z-20 flex flex-col mt-5 gap-1 w-max border p-2 rounded-lg border-gray-600" key={roomType.name}>
+                  <p className="font-bold text-lg text-gray-900 select-none">{roomType.name}</p>
+                  <button
+                    onClick={() => toggleRoomTypeDetailsName(roomType.name)}
+                    className="w-32 justify-start items-center flex gap-1 cursor-pointer"
+                  >
+                    <p className="text-gray-600 text-sm select-none">Ver detalles</p>
+                    <IconContext.Provider value={{ size: "1em", className: "ml-1 text-gray-500" }}>
+
+                      <FaArrowDown />
+                    </IconContext.Provider>
 
 
+                  </button>
+                </div>
+                <div className={`bg-gray-100 z-20 pointer-events-none absolute top-[105%] rounded-md select-none transition-all border border-gray-600 p-2 w-max duration-300 ease-in-out ${visibleName === roomType.name ? `opacity-100` : "opacity-0"}`}>
+                  <p><b>Tipo de habitación:</b> {roomType.name}</p>
+                  <p><b>Capacidad:</b> {roomType.capacity}</p>
+                  <p><b>Baños:</b> {roomType.totalBathrooms}</p>
+                  <p><b>Camas:</b> {roomType.totalBeds}</p>
+                  <p><b>Precio por noche (USD):</b> {roomType.price}</p>
                 </div>
               </div>
             ))}
