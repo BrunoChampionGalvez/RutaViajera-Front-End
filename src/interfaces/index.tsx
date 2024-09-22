@@ -135,8 +135,7 @@ export interface ICreateNumberOfRoom {
   roomsTypeId: string | null;
 }
 export interface IRoomType {
-  id: string;
-  roomTypeId: string;
+  id: string | number;
   name: string;
   capacity: number;
   totalBathrooms: number;
@@ -146,8 +145,7 @@ export interface IRoomType {
 }
 
 export interface IRoomTypeRegister {
-  id: string;
-  roomTypeId: string;
+  id: number;
   name: string;
   capacity: number;
   totalBathrooms: number;

@@ -39,7 +39,7 @@ export const postHotel = async (hotel: IHotelRegisterPost) => {
   }
 };
 
-export const postRoomType = async (roomType: IRoomType) => {
+export const postRoomType = async (roomType: Omit<IRoomType, 'id'>) => {
   const token = typeof window !== "undefined" && localStorage.getItem("token");
   const response = await fetch(
     "http://localhost:3000/roomstype",
