@@ -13,6 +13,7 @@ import { UserContext } from "@/context/userContext";
 import { HotelContext } from "@/context/hotelContext";
 import { FaArrowDown } from "react-icons/fa";
 import { CiSaveUp2 } from "react-icons/ci";
+import { IconContext } from "react-icons";
 
 export default function TypesRegister() {
   const { isAdmin, user } = useContext(UserContext);
@@ -84,6 +85,7 @@ export default function TypesRegister() {
       images: selectedBuffers.map(buffer => Array.from(buffer)) // Convert Uint8Array to array of numbers
     }])
     setSelectedBuffers([])
+    setSubmitting(false)
   }
 
   const handleSubmit = async (
@@ -316,24 +318,35 @@ export default function TypesRegister() {
         </div>
       )},
       {roomTypes.length > 0 &&
-        <section className={`transition-all duration-200 ease-in-out ${roomTypes.length > 0 ? 'block' : 'hidden'}`}>
-          <div className="mx-auto">
-            <div>
-              <h1 className="text-4xl mb-2 pb-2 text-center font-bold">Tipos de Habitación</h1>
-              <p className="text-gray-600">Estos tipos de habitación todavía no se han guardado. Presiona en el botón de <b>Guardar</b> de la derecha para que se guarden.</p>
+        <section className={`place-self-start p-8 w-full transition-all duration-200 ease-in-out ${roomTypes.length > 0 ? 'block' : 'hidden'}`}>
+          <div className="mx-auto mb-8">
+            <div className="flex justify-center items-center gap-8 mb-2 pb-2">
+              <h1 className="text-4xl text-center font-bold w-max">Tipos de<br />Habitación</h1>
+              <div className="w-max">
+                <button className="btn-secondary text-2xl text-center flex items-center justify-center">
+                  Guardar
+                  <IconContext.Provider value={{ size: "1.3em", className: "ml-2" }}>
+
+                    <CiSaveUp2 />
+                  </IconContext.Provider>
+
+                </button>
+              </div>
             </div>
-            <button className="btn-secondary">
-              Guardar
-              <CiSaveUp2 />
-            </button>
+            <p className="text-gray-600 text-center w-4/6 mx-auto mb-2">Estos tipos de habitación no se han guardado. Presiona el botón <b>Guardar</b> de arriba para que se guarden.</p>
           </div>
-          <div className="flex">
+          <div className="flex w-4/6 mx-auto">
             {roomTypes.map(roomType => (
-              <div key={roomType.id}>
-                <p>{roomType.name}</p>
-                <div>
-                  <p>Ver detalles</p>
-                  <FaArrowDown />
+              <div className="flex flex-col gap-1 w-max" key={roomType.id}>
+                <p className="font-bold text-2xl text-gray-900">{roomType.name}</p>
+                <div className="w-32 justify-start items-center flex gap-1">
+                  <p className="text-gray-600">Ver detalles</p>
+                  <IconContext.Provider value={{ className: "text-gray-500" }}>
+
+                    <FaArrowDown />
+                  </IconContext.Provider>
+
+
                 </div>
               </div>
             ))}
