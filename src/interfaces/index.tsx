@@ -135,13 +135,13 @@ export interface ICreateNumberOfRoom {
   roomsTypeId: string | null;
 }
 export interface IRoomType {
-  id: string | number;
-  name: string;
-  capacity: number;
-  totalBathrooms: number;
-  totalBeds: number;
-  images: string[];
-  price: number;
+  id: string | number | undefined;
+  name: string | undefined;
+  capacity: number | undefined;
+  totalBathrooms: number | undefined;
+  totalBeds: number | undefined;
+  images: string[] | undefined;
+  price: number | undefined;
 }
 
 export interface IRoomTypeRegister {
@@ -152,7 +152,6 @@ export interface IRoomTypeRegister {
   totalBeds: number;
   images: any[];
   price: number;
-  hotelId: string;
 }
 
 export interface IHotelRegisterInitialValues {
@@ -654,4 +653,8 @@ export interface IReviewOfSuperAdmin {
 export interface IReviewErrors {
   rating: string;
   comment: string;
+}
+
+export interface RoomTypesRegisterProps {
+  hotelId: string | string[] | undefined
 }

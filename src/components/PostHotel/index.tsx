@@ -263,7 +263,7 @@ const HotelRegister: React.FC<HotelRegisterProps> = () => {
     }
     
     const buffersToUpload = {
-      buffers: selectedBuffers.map(buffer => Array.from(buffer)) // Convert Uint8Array to array of numbers
+      arraysOfBuffers: selectedBuffers.map(buffer => Array.from(buffer)) // Convert Uint8Array to array of numbers
     };
     
     const response = await fetch('/api/upload-hotel-images', {
@@ -290,7 +290,7 @@ const HotelRegister: React.FC<HotelRegisterProps> = () => {
         addNewHotel(createdHotel);
         setHotelBeingCreated(createdHotel)
         alert("Hotel registrado exitosamente");
-        router.push("/post-hotel-types");
+        router.push(`/post-hotel-types/${createdHotel.id}`);
       } else {
         alert("Error al registrar el hotel");
       }

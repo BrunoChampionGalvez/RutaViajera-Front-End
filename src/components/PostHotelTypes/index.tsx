@@ -1,6 +1,6 @@
 "use client";
 
-import { IRoomTypeRegister } from "@/interfaces";
+import { IRoomTypeRegister, RoomTypesRegisterProps } from "@/interfaces";
 import { ErrorMessage, Field, Form, Formik } from "formik";
 import Link from "next/link";
 import createImage from "../../../public/create.png";
@@ -16,14 +16,13 @@ import { CiSaveUp2 } from "react-icons/ci";
 import { IconContext } from "react-icons";
 import { MdDelete } from "react-icons/md";
 
-export default function TypesRegister() {
+export default function TypesRegister({ hotelId }: RoomTypesRegisterProps) {
   const { isAdmin, user } = useContext(UserContext);
   const { setRoomTypeIdBeingCreated } = useContext(HotelContext)
   const router = useRouter();
-  const [hotelId, setHotelId] = useState<string>("");
   const [savedRoomTypes, setSavedRoomTypes] = useState<Partial<IRoomTypeRegister>[]>([])
   const [nonSavedRoomTypes, setNonSavedRoomTypes] = useState<Partial<IRoomTypeRegister>[]>([])
-  const [visibleName, setVisibleName] = useState<string | undefined>(undefined);
+  const [visibleId, setVisibleId] = useState<number | null | undefined>(null);
   const [visibleRoomType, setVisibleRoomType] = useState<Partial<IRoomTypeRegister> | null>(null)
   const [isSavedRoomTypesVisible, setIsSavedRoomTypesVisible] = useState<boolean>(false)
   const [isNonSavedRoomTypesVisible, setIsNonSavedRoomTypesVisible] = useState<boolean>(true)
@@ -38,22 +37,8 @@ export default function TypesRegister() {
     setIsNonSavedRoomTypesVisible(true)
   }
 
-  const toggleRoomTypeDetailsName = (name: string | undefined) => {
-    if (isSavedRoomTypesVisible) {
-      setVisibleName(visibleName === name ? undefined : name);
-      for (const roomType of savedRoomTypes) {
-        if (roomType.name === visibleName) {
-          setVisibleRoomType(roomType)
-        }
-      }
-    } else if (isNonSavedRoomTypesVisible) {
-      setVisibleName(visibleName === name ? undefined : name);
-      for (const roomType of nonSavedRoomTypes) {
-        if (roomType.name === visibleName) {
-          setVisibleRoomType(roomType)
-        }
-      }
-    }
+  const toggleRoomTypeDetailsId = (id: number | undefined) => {
+    setVisibleId(visibleId === id ? null : id);
   };
 
   const [initialValues, setInitialValues] = useState<Omit<IRoomTypeRegister, 'id'>>({
@@ -62,20 +47,8 @@ export default function TypesRegister() {
     totalBathrooms: 0,
     totalBeds: 0,
     images: [],
-    price: 0,
-    hotelId: hotelId
+    price: 0
   });
-
-  useEffect(() => {
-    if (user && user.hotels && user.hotels.length > 0) {
-      const lastHotelId = user.hotels[user.hotels.length - 1].id;
-      setHotelId(lastHotelId);
-      setInitialValues((prevValues) => ({
-        ...prevValues,
-        hotelId: lastHotelId,
-      }));
-    }
-  }, [user]);
 
   const uploadImageToCloudinary = async (
     file: string | File
@@ -120,63 +93,81 @@ export default function TypesRegister() {
     values: Omit<IRoomTypeRegister, 'id'>,
     { setSubmitting }: { setSubmitting: (isSubmitting: boolean) => void }
   ) => {
-    const token = localStorage.getItem("token");
-    if (!token) {
-      alert("Hubo un problema. Por favor, inicie sesión de nuevo.");
-      setSubmitting(false);
-      return;
-    }
+    if (hotelId) {
 
-    const newRoomTypes = [
-      ...nonSavedRoomTypes
-    ]
+      const token = localStorage.getItem("token");
+      if (!token) {
+        alert("Hubo un problema. Por favor, inicie sesión de nuevo.");
+        setSubmitting(false);
+        return;
+      }
 
-    const newRoomTypesNoId = newRoomTypes.map(roomType => {
-      delete roomType.id
-      return roomType
-    })
+      console.log("nonSavedRoomTypes:", nonSavedRoomTypes);
 
-    for (const roomType of newRoomTypesNoId) {
-      const response = await fetch('/api/upload-hotel-images', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(roomType.images)
+
+      const newRoomTypes = [
+        ...nonSavedRoomTypes
+      ]
+
+      const newRoomTypesNoId = newRoomTypes.map(roomType => {
+        delete roomType.id
+        return roomType
       })
-
-      let uploadedUrls: string[] = await response.json()
-
-      const formData = {
-        ...values,
-        images: uploadedUrls,
-        hotelId: hotelId || values.hotelId,
-      };
-
-      console.log("Datos enviados al back: ", formData);
       const arrayOfSavedRoomTypes = []
-      try {
-        const response = await postRoomType(formData);
-        arrayOfSavedRoomTypes.push(response)
+      console.log("newRoomTypesNoId:", newRoomTypesNoId);
+
+      for (const roomType of newRoomTypesNoId) {
+        try {
+          const objectToSend = {
+            arraysOfBuffers: roomType.images
+          }
+          const responsePostImages = await fetch('/api/upload-hotel-images', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(objectToSend)
+          })
+
+          let uploadedUrls: string[] = await responsePostImages.json()
+
+          const formData = {
+            ...roomType,
+            images: uploadedUrls,
+            hotelId: hotelId
+          };
+
+          console.log("Datos enviados al back: ", formData);
+          const response = await postRoomType(formData);
+          arrayOfSavedRoomTypes.push(response)
+
+        } catch (error) {
+          console.error(error);
+
+        } finally {
+          setSavedRoomTypes(arrayOfSavedRoomTypes)
+          setNonSavedRoomTypes([])
+          setIsSavedRoomTypesVisible(true)
+          setSubmitting(false);
+        }
+      }
+
+      if (arrayOfSavedRoomTypes.length > 0) {
         Swal.fire({
-          position: "top",
           icon: "success",
-          title: "Tipo de habitación registrado exitosamente",
+          title: "Tipos de habitación registradas exitosamente",
           showConfirmButton: true,
           timer: 4000,
         });
-      } catch (error) {
-        console.error(error);
+      } else {
         Swal.fire({
           icon: "error",
-          title: "Oops...",
+          title: "Ups...",
           text: "Ha ocurrido un error",
           timer: 4000,
         });
-      } finally {
-        setSavedRoomTypes(arrayOfSavedRoomTypes)
-        setSubmitting(false);
       }
+    } else {
+      router.push("/post-hotel")
     }
-
   };
   const [selectedBuffers, setSelectedBuffers] = useState<Uint8Array[]>([])
   const handleImagesSelection = async (event: React.ChangeEvent<HTMLInputElement>) => {
@@ -319,6 +310,7 @@ export default function TypesRegister() {
                                   ...values,
                                   images: selectedBuffers.map(buffer => Array.from(buffer)) // Convert Uint8Array to array of numbers
                                 }])
+                                setRoomTypeIdCounter(prevId => prevId + 1)
                                 setSelectedBuffers([])
                               }
                             }
@@ -377,7 +369,7 @@ export default function TypesRegister() {
 
                             <div className="flex justify-around w-5/6 gap-2 flex-wrap mx-auto">
                               {nonSavedRoomTypes.map(roomType => (
-                                <div className="w-max relative">
+                                <div key={roomType.id} className="w-max relative">
 
                                   <div className="-z-20 flex flex-col mt-5 gap-1 w-max border p-2 rounded-lg border-gray-600" key={roomType.name}>
                                     <div onClick={() => {
@@ -389,11 +381,11 @@ export default function TypesRegister() {
                                     </div>
                                     <p className="font-bold text-lg text-gray-900 select-none">{roomType.name}</p>
                                     <div
-                                      onClick={() => toggleRoomTypeDetailsName(roomType.name)}
+                                      onClick={() => toggleRoomTypeDetailsId(roomType.id)}
                                       className="w-32 justify-start items-center flex gap-1 cursor-pointer"
                                     >
                                       <p className="text-gray-600 text-sm select-none">Ver detalles</p>
-                                      <IconContext.Provider value={{ size: "1em", className: `ml-1 text-gray-500 transition-rotate duration-300 ease-in-out ${visibleName === roomType.name ? "-rotate-180" : "rotate-0"}` }}>
+                                      <IconContext.Provider value={{ size: "1em", className: `ml-1 text-gray-500 transition-rotate duration-300 ease-in-out ${visibleId === roomType.id ? "-rotate-180" : "rotate-0"}` }}>
 
                                         <FaArrowDown />
                                       </IconContext.Provider>
@@ -401,7 +393,7 @@ export default function TypesRegister() {
 
                                     </div>
                                   </div>
-                                  <div className={`bg-gray-100 z-20 absolute rounded-md transition-all border border-gray-500 shadow-lg p-2 w-max duration-300 ease-in-out ${visibleName === roomType.name ? `top-[110%] opacity-100 pointer-events-auto select-none` : "top-[100%] opacity-0 pointer-events-none"}`}>
+                                  <div className={`bg-gray-100 z-20 absolute rounded-md transition-all border border-gray-500 shadow-lg p-2 w-max duration-300 ease-in-out ${visibleId === roomType.id ? `top-[110%] opacity-100 pointer-events-auto select-none` : "top-[100%] opacity-0 pointer-events-none"}`}>
                                     <p><b>Tipo de habitación:</b> {roomType.name}</p>
                                     <p><b>Capacidad:</b> {roomType.capacity}</p>
                                     <p><b>Baños:</b> {roomType.totalBathrooms}</p>
@@ -422,16 +414,16 @@ export default function TypesRegister() {
 
                             <div className="flex justify-around w-5/6 gap-2 flex-wrap mx-auto">
                               {savedRoomTypes.map(roomType => (
-                                <div className="w-max relative">
+                                <div key={roomType.id} className="w-max relative">
 
-                                  <div className="-z-20 flex flex-col mt-5 gap-1 w-max border p-2 rounded-lg border-gray-600" key={roomType.name}>
+                                  <div className="-z-20 flex flex-col mt-5 gap-1 w-max border p-2 rounded-lg border-gray-600" key={roomType.id}>
                                     <p className="font-bold text-lg text-gray-900 select-none">{roomType.name}</p>
                                     <div
-                                      onClick={() => toggleRoomTypeDetailsName(roomType.name)}
+                                      onClick={() => toggleRoomTypeDetailsId(roomType.id)}
                                       className="w-32 justify-start items-center flex gap-1 cursor-pointer"
                                     >
                                       <p className="text-gray-600 text-sm select-none">Ver detalles</p>
-                                      <IconContext.Provider value={{ size: "1em", className: `ml-1 text-gray-500 transition-rotate duration-300 ease-in-out ${visibleName === roomType.name ? "-rotate-180" : "rotate-0"}` }}>
+                                      <IconContext.Provider value={{ size: "1em", className: `ml-1 text-gray-500 transition-rotate duration-300 ease-in-out ${visibleId === roomType.id ? "-rotate-180" : "rotate-0"}` }}>
 
                                         <FaArrowDown />
                                       </IconContext.Provider>
@@ -439,7 +431,7 @@ export default function TypesRegister() {
 
                                     </div>
                                   </div>
-                                  <div className={`bg-gray-100 z-20 absolute rounded-md transition-all border border-gray-500 shadow-lg p-2 w-max duration-300 ease-in-out ${visibleName === roomType.name ? `top-[110%] opacity-100 pointer-events-auto select-none` : "top-[100%] opacity-0 pointer-events-none"}`}>
+                                  <div className={`bg-gray-100 z-20 absolute rounded-md transition-all border border-gray-500 shadow-lg p-2 w-max duration-300 ease-in-out ${visibleId === roomType.id ? `top-[110%] opacity-100 pointer-events-auto select-none` : "top-[100%] opacity-0 pointer-events-none"}`}>
                                     <p><b>Tipo de habitación:</b> {roomType.name}</p>
                                     <p><b>Capacidad:</b> {roomType.capacity}</p>
                                     <p><b>Baños:</b> {roomType.totalBathrooms}</p>

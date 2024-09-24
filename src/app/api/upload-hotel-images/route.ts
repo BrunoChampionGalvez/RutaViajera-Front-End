@@ -13,7 +13,7 @@ cloudinary.config({
 export async function POST(req: NextRequest) {
     const body = await req.json()
 
-    const buffers = body.buffers.map((arr: number[]) => new Uint8Array(arr));
+    const buffers = body.arraysOfBuffers.map((arr: number[]) => new Uint8Array(arr));
 
     const uploadedImageUrls: (string | undefined)[] = []
 

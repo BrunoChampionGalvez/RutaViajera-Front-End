@@ -39,7 +39,7 @@ export const postHotel = async (hotel: IHotelRegisterPost) => {
   }
 };
 
-export const postRoomType = async (roomType: Omit<IRoomType, 'id'>) => {
+export const postRoomType = async (roomType: Partial<IRoomType>) => {
   const token = typeof window !== "undefined" && localStorage.getItem("token");
   const response = await fetch(
     "http://localhost:3000/roomstype",
@@ -54,7 +54,7 @@ export const postRoomType = async (roomType: Omit<IRoomType, 'id'>) => {
   );
 
   if (!response.ok) throw new Error('Error in posting the room type.')
-  const data = await response.text();
+  const data = await response.json();
   return data;
 };
 
