@@ -14,6 +14,7 @@ import { HotelContext } from "@/context/hotelContext";
 import { FaArrowDown } from "react-icons/fa";
 import { CiSaveUp2 } from "react-icons/ci";
 import { IconContext } from "react-icons";
+import { MdDelete } from "react-icons/md";
 
 export default function TypesRegister() {
   const { isAdmin, user } = useContext(UserContext);
@@ -107,22 +108,13 @@ export default function TypesRegister() {
     }
   };
 
-  const [roomTypeIdCounter, setRoomTypeIdCounter] = useState<number>(0)
-
-  const handleAddRoomType = (
-    values: Omit<IRoomTypeRegister, 'id'>,
-    { setSubmitting }: { setSubmitting: (isSubmitting: boolean) => void }
-  ) => {
-    console.log(values);
-
-    setNonSavedRoomTypes(prevRoomTypes => [...prevRoomTypes, {
-      id: roomTypeIdCounter,
-      ...values,
-      images: selectedBuffers.map(buffer => Array.from(buffer)) // Convert Uint8Array to array of numbers
-    }])
-    setSelectedBuffers([])
-    setSubmitting(false)
+  const handleDeleteNonSavedRoomType = (id: number | undefined) => {
+    const newNonSavedRoomTypes = [...nonSavedRoomTypes]
+    const filteredNonSavedRoomTypes = newNonSavedRoomTypes.filter((roomType) => roomType.id !== id)
+    setNonSavedRoomTypes(filteredNonSavedRoomTypes)
   }
+
+  const [roomTypeIdCounter, setRoomTypeIdCounter] = useState<number>(0)
 
   const handleSubmit = async (
     values: Omit<IRoomTypeRegister, 'id'>,
@@ -136,7 +128,7 @@ export default function TypesRegister() {
     }
 
     const newRoomTypes = [
-      ...savedRoomTypes
+      ...nonSavedRoomTypes
     ]
 
     const newRoomTypesNoId = newRoomTypes.map(roomType => {
@@ -160,10 +152,10 @@ export default function TypesRegister() {
       };
 
       console.log("Datos enviados al back: ", formData);
-
+      const arrayOfSavedRoomTypes = []
       try {
         const response = await postRoomType(formData);
-        setRoomTypeIdBeingCreated(response)
+        arrayOfSavedRoomTypes.push(response)
         Swal.fire({
           position: "top",
           icon: "success",
@@ -171,7 +163,6 @@ export default function TypesRegister() {
           showConfirmButton: true,
           timer: 4000,
         });
-        router.push("/rooms-number");
       } catch (error) {
         console.error(error);
         Swal.fire({
@@ -181,6 +172,7 @@ export default function TypesRegister() {
           timer: 4000,
         });
       } finally {
+        setSavedRoomTypes(arrayOfSavedRoomTypes)
         setSubmitting(false);
       }
     }
@@ -206,8 +198,8 @@ export default function TypesRegister() {
       {isAdmin ? (
         <div className="flex w-full justify-center items-center">
           <div className="w-max p-8">
-            <Formik initialValues={initialValues} onSubmit={handleAddRoomType}>
-              {({ isSubmitting, setFieldValue }) => (
+            <Formik initialValues={initialValues} onSubmit={handleSubmit}>
+              {({ isSubmitting, setFieldValue, values }) => (
                 <Form className="flex">
                   <div className="flex justify-center w-1/2">
                     <div className="w-8/12 flex flex-col gap-3 p-8">
@@ -318,25 +310,30 @@ export default function TypesRegister() {
                       </div>
                       <div className="flex justify-end mr-2">
                         <div>
-                          <button
-                            type="submit"
-                            className="py-2 px-4 border border-black rounded-md shadow-sm text-sm font-medium text-white bg-black hover:bg-gray-800 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-[#f8263a]"
-                            disabled={isSubmitting}
+                          <div
+                            onClick={
+                              () => {
+
+                                setNonSavedRoomTypes(prevRoomTypes => [...prevRoomTypes, {
+                                  id: roomTypeIdCounter,
+                                  ...values,
+                                  images: selectedBuffers.map(buffer => Array.from(buffer)) // Convert Uint8Array to array of numbers
+                                }])
+                                setSelectedBuffers([])
+                              }
+                            }
+                            className="py-2 px-4 border w-max border-black rounded-md shadow-sm text-sm font-medium text-white bg-black hover:bg-gray-800 cursor-pointer"
                           >
-                            {isSubmitting ? (
-                              "Creando..."
-                            ) : (
-                              <div className="flex items-center">
-                                <h1 className="mr-1">Agregar</h1>
-                                <Image
-                                  src={createImage}
-                                  alt="Crear"
-                                  width={24}
-                                  height={24}
-                                />
-                              </div>
-                            )}
-                          </button>
+                            <div className="flex items-center w-max">
+                              <h1 className="mr-1">Agregar</h1>
+                              <Image
+                                src={createImage}
+                                alt="Crear"
+                                width={24}
+                                height={24}
+                              />
+                            </div>
+                          </div>
                         </div>
                       </div>
                     </div>
@@ -350,7 +347,7 @@ export default function TypesRegister() {
                           <button
                             disabled={isSavedRoomTypesVisible}
                             className={`btn-secondary !text-md text-center flex items-center justify-center ${isSavedRoomTypesVisible && "!bg-[#e2293c96] hover:!bg-[#e2293c96] !cursor-default"}`}>
-                            Guardar
+                            {isSubmitting ? 'Guardando...' : 'Guardar'}
                             <IconContext.Provider value={{ size: "1.8em", className: "ml-2" }}>
 
                               <CiSaveUp2 />
@@ -383,6 +380,13 @@ export default function TypesRegister() {
                                 <div className="w-max relative">
 
                                   <div className="-z-20 flex flex-col mt-5 gap-1 w-max border p-2 rounded-lg border-gray-600" key={roomType.name}>
+                                    <div onClick={() => {
+                                      handleDeleteNonSavedRoomType(roomType.id)
+                                    }} className="absolute top-7 right-2 cursor-pointer">
+                                      <IconContext.Provider value={{ color: "#f8263a", size: "1.3em" }}>
+                                        <MdDelete />
+                                      </IconContext.Provider>
+                                    </div>
                                     <p className="font-bold text-lg text-gray-900 select-none">{roomType.name}</p>
                                     <div
                                       onClick={() => toggleRoomTypeDetailsName(roomType.name)}
