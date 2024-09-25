@@ -5,7 +5,7 @@ import { ErrorMessage, Field, Form, Formik } from "formik";
 import Link from "next/link";
 import createImage from "../../../public/create.png";
 import Image from "next/image";
-import { postRoomType } from "@/lib/server/fetchHotels";
+import { getRoomTypesByHotelId, postRoomType } from "@/lib/server/fetchHotels";
 import { useContext, useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import Swal from "sweetalert2";
@@ -26,6 +26,7 @@ export default function TypesRegister({ hotelId }: RoomTypesRegisterProps) {
   const [visibleRoomType, setVisibleRoomType] = useState<Partial<IRoomTypeRegister> | null>(null)
   const [isSavedRoomTypesVisible, setIsSavedRoomTypesVisible] = useState<boolean>(false)
   const [isNonSavedRoomTypesVisible, setIsNonSavedRoomTypesVisible] = useState<boolean>(true)
+  const [isAdding, setIsAdding] = useState<boolean>(false)
 
   const showSavedRoomTypes = () => {
     setIsNonSavedRoomTypesVisible(false)
@@ -113,7 +114,7 @@ export default function TypesRegister({ hotelId }: RoomTypesRegisterProps) {
         delete roomType.id
         return roomType
       })
-      const arrayOfSavedRoomTypes = []
+      const arrayOfSavedRoomTypes: IRoomTypeRegister[] = []
       console.log("newRoomTypesNoId:", newRoomTypesNoId);
 
       for (const roomType of newRoomTypesNoId) {
@@ -143,7 +144,7 @@ export default function TypesRegister({ hotelId }: RoomTypesRegisterProps) {
           console.error(error);
 
         } finally {
-          setSavedRoomTypes(arrayOfSavedRoomTypes)
+          setSavedRoomTypes(prevRoomTypes => [...prevRoomTypes, ...arrayOfSavedRoomTypes])
           setNonSavedRoomTypes([])
           setIsSavedRoomTypesVisible(true)
           setSubmitting(false);
@@ -183,6 +184,16 @@ export default function TypesRegister({ hotelId }: RoomTypesRegisterProps) {
       }
     }
   }
+
+  useEffect(() => {
+    async function getDBRoomTypes(hotelId: string | string[] | undefined) {
+      const roomTypes = await getRoomTypesByHotelId(hotelId)
+      
+      setSavedRoomTypes(roomTypes)
+    }
+
+    getDBRoomTypes(hotelId)
+  }, [])
 
   return (
     <div className="flex min-h-screen items-center justify-center">
@@ -304,7 +315,18 @@ export default function TypesRegister({ hotelId }: RoomTypesRegisterProps) {
                           <div
                             onClick={
                               () => {
-
+                                setIsAdding(true)
+                                const roomTypeNameExists = savedRoomTypes.some(roomType => roomType.name === values.name) || nonSavedRoomTypes.some(roomType => roomType.name === values.name)
+                                if (roomTypeNameExists) {
+                                  Swal.fire({
+                                    icon: "error",
+                                    title: "Ups...",
+                                    text: "Ya existe un tipo de habitación con ese nombre.",
+                                    timer: 4000,
+                                  });
+                                  setIsAdding(false)
+                                  return
+                                }
                                 setNonSavedRoomTypes(prevRoomTypes => [...prevRoomTypes, {
                                   id: roomTypeIdCounter,
                                   ...values,
@@ -312,12 +334,13 @@ export default function TypesRegister({ hotelId }: RoomTypesRegisterProps) {
                                 }])
                                 setRoomTypeIdCounter(prevId => prevId + 1)
                                 setSelectedBuffers([])
+                                setIsAdding(false)
                               }
                             }
                             className="py-2 px-4 border w-max border-black rounded-md shadow-sm text-sm font-medium text-white bg-black hover:bg-gray-800 cursor-pointer"
                           >
                             <div className="flex items-center w-max">
-                              <h1 className="mr-1">Agregar</h1>
+                              {isAdding ? (<h1 className="mr-1">Agregando...</h1>) : <h1 className="mr-1">Agregar</h1>}
                               <Image
                                 src={createImage}
                                 alt="Crear"

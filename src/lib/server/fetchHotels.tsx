@@ -3,6 +3,7 @@ import {
   ICreateNumberOfRoom,
   IHotelRegisterPost,
   IRoomType,
+  IRoomTypeRegister,
 } from "@/interfaces";
 
 export const postHotel = async (hotel: IHotelRegisterPost) => {
@@ -229,7 +230,7 @@ export const postBooking = async (booking: {
 
 export const getRoomTypesByHotelId = async (
   hotelId: string
-): Promise<IRoomType[]> => {
+): Promise<IRoomTypeRegister[]> => {
   try {
     const token = localStorage.getItem("token");
 
