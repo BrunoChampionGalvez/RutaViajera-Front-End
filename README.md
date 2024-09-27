@@ -14,7 +14,7 @@ pnpm dev
 bun dev
 ```
 
-Open [http://rutaviajera-backend-production.up.railway.app](http://rutaviajera-backend-production.up.railway.app) with your browser to see the result.
+Open [https://rutaviajera-backend-production.up.railway.app](https://rutaviajera-backend-production.up.railway.app) with your browser to see the result.
 
 You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
 
