@@ -37,7 +37,7 @@ export default function ResetPassword({ token }: ResetPasswordProps) {
 
     try {
       const response = await fetch(
-        `http://localhost:3000/auth/reset-password`,
+        `http://rutaviajera-backend-production.up.railway.app/auth/reset-password`,
         {
           method: "POST",
           headers: {

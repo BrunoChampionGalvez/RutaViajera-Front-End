@@ -10,7 +10,7 @@ export const getAllCustomers = async () => {
     console.log('Ejecutando getAllCustomers');
 
     const response = await fetch(
-      "http://localhost:3000/customers/allCustomers",
+      "http://rutaviajera-backend-production.up.railway.app/customers/allCustomers",
       {
         method: "GET",
         headers: {
@@ -40,7 +40,7 @@ export const getAllHotelAdmins = async () => {
     console.log('Ejecutando getAllHotelAdmins');
 
     const response = await fetch(
-      "http://localhost:3000/hotel-admins/AllHotelAdmins",
+      "http://rutaviajera-backend-production.up.railway.app/hotel-admins/AllHotelAdmins",
       {
         method: "GET",
         headers: {
@@ -69,7 +69,7 @@ export const deleteHotelAdmin = async (hotelAdminId: string) => {
     console.log('Ejecutando deleteHotelAdmin');
 
     const response = await fetch(
-      `http://localhost:3000/hotel-admins/${hotelAdminId}`,
+      `http://rutaviajera-backend-production.up.railway.app/hotel-admins/${hotelAdminId}`,
       {
         method: "DELETE",
         headers: {
@@ -91,7 +91,7 @@ export const deleteCustomer = async (customerId: string) => {
   if (!token) throw new Error('No estás autorizado.')
   console.log('Ejecutando deleteCustomer');
 
-  const response = await fetch(`http://localhost:3000/customers/${customerId}`,
+  const response = await fetch(`http://rutaviajera-backend-production.up.railway.app/customers/${customerId}`,
     {
       method: "DELETE",
       headers: {
@@ -114,7 +114,7 @@ export const getHotelAdminById = async (
     console.log('Ejecutando getHotelAdminById');
 
     const response = await fetch(
-      `http://localhost:3000/hotel-admins/${hotelAdminId}`,
+      `http://rutaviajera-backend-production.up.railway.app/hotel-admins/${hotelAdminId}`,
       {
         method: "GET",
         headers: {
@@ -139,7 +139,7 @@ export const getCustomerById = async (customerId: string): Promise<ICustomerDeta
   if (!token) throw new Error('No estás autorizado.')
   console.log('Ejecutando getCustomerById');
 
-  const response = await fetch(`http://localhost:3000/customers/${customerId}`,
+  const response = await fetch(`http://rutaviajera-backend-production.up.railway.app/customers/${customerId}`,
     {
       method: "GET",
       headers: {
@@ -157,7 +157,7 @@ export const deleteHotelOfHotelAdmin = async (hotelId: string) => {
   if (!token) throw new Error('No estás autorizado.')
   console.log('Ejecutando deleteHotelOfHotelAdmin');
 
-  const response = await fetch(`http://localhost:3000/hotels/${hotelId}`, {
+  const response = await fetch(`http://rutaviajera-backend-production.up.railway.app/hotels/${hotelId}`, {
     method: "DELETE",
     headers: {
       "Content-Type": "application/json",
@@ -180,7 +180,7 @@ export const updateHotelDetails = async (
   try {
     console.log('Ejecutando updateHotelDetails');
 
-    const response = await fetch(`http://localhost:3000/hotels/${hotelId}`, {
+    const response = await fetch(`http://rutaviajera-backend-production.up.railway.app/hotels/${hotelId}`, {
       method: "PUT",
       headers: {
         "Content-Type": "application/json",
@@ -203,7 +203,7 @@ export const updateHotelAdminDetails = async (hotelAdminId: string, selectedHote
   if (!token) throw new Error('No estás autorizado.')
   console.log('Ejecutando updateHotelAdminDetails');
 
-  const response = await fetch(`http://localhost:3000/hotel-admins/${hotelAdminId}`, {
+  const response = await fetch(`http://rutaviajera-backend-production.up.railway.app/hotel-admins/${hotelAdminId}`, {
     method: "PUT",
     headers: {
       "Content-Type": "application/json",
@@ -222,7 +222,7 @@ export const updateCustomerDetails = async (customerId: string, selectedCustomer
   if (!token) throw new Error('No estás autorizado.')
   console.log('Ejecutando updateCustomerDetails');
 
-  const response = await fetch(`http://localhost:3000/customers/${customerId}`, {
+  const response = await fetch(`http://rutaviajera-backend-production.up.railway.app/customers/${customerId}`, {
     method: "PUT",
     headers: {
       "Content-Type": "application/json",
@@ -246,7 +246,7 @@ export const getAllBookings = async () => {
   try {
     console.log('Ejecutando getAllBookings');
 
-    const response = await fetch("http://localhost:3000/bookings", {
+    const response = await fetch("http://rutaviajera-backend-production.up.railway.app/bookings", {
       method: "GET",
       headers: {
         "Content-Type": "application/json",
@@ -274,7 +274,7 @@ export const getBookingsByCustomerId = async (customerId: string) => {
   try {
     console.log('Ejecutando getBookingsByCustomerId');
 
-    const response = await fetch(`http://localhost:3000/bookings/customer/${customerId}`, {
+    const response = await fetch(`http://rutaviajera-backend-production.up.railway.app/bookings/customer/${customerId}`, {
       method: "GET",
       headers: {
         "Content-Type": "application/json",
@@ -297,7 +297,7 @@ export const deleteBookingOfCustomer = async (bookingId: string) => {
   if (!token) throw new Error('No estás autorizado.')
   console.log('Ejecutando deleteBookingOfCustomer');
 
-  const response = await fetch(`http://localhost:3000/bookings/softDelete/${bookingId}`, {
+  const response = await fetch(`http://rutaviajera-backend-production.up.railway.app/bookings/softDelete/${bookingId}`, {
     method: "DELETE",
     headers: {
       "Content-Type": "application/json",
@@ -319,7 +319,7 @@ export const getHotelById = async (hotelId: string) => {
     console.log('Ejecutando getHotelById');
 
 
-    const response = await fetch(`http://localhost:3000/hotels/${hotelId}`, {
+    const response = await fetch(`http://rutaviajera-backend-production.up.railway.app/hotels/${hotelId}`, {
       method: "GET",
       headers: {
         "Content-Type": "application/json",
@@ -340,7 +340,7 @@ export const deleteReviewOfHotel = async (reviewId: string) => {
   try {
     const token = localStorage.getItem("token")
     if (!token) throw new Error('No estás autorizado.') 
-    const response = await fetch(`http://localhost:3000/reviews/softDelete/${reviewId}`, {
+    const response = await fetch(`http://rutaviajera-backend-production.up.railway.app/reviews/softDelete/${reviewId}`, {
       method: "DELETE",
       headers: {
         "Content-Type": "application/json",
@@ -359,7 +359,7 @@ export const deleteRoomTypeOfHotel = async (reviewId: string) => {
   try {
     const token = localStorage.getItem("token")
     if (!token) throw new Error('No estás autorizado.')
-    const response = await fetch(`http://localhost:3000/roomstype/${reviewId}`, {
+    const response = await fetch(`http://rutaviajera-backend-production.up.railway.app/roomstype/${reviewId}`, {
       method: "DELETE",
       headers: {
         "Content-Type": "application/json",
@@ -379,7 +379,7 @@ export const updateRoomTypeDetails = async (roomtypeId: string, selectedRoomType
   if (!token) throw new Error('No estás autorizado.')
   console.log('Ejecutando updateCustomerDetails');
 
-  const response = await fetch(`http://localhost:3000/roomstype/${roomtypeId}`, {
+  const response = await fetch(`http://rutaviajera-backend-production.up.railway.app/roomstype/${roomtypeId}`, {
     method: "PUT",
     headers: {
       "Content-Type": "application/json",
@@ -403,7 +403,7 @@ export const getRoomsByRoomTypeId = async (roomTypeId: string) => {
   try {
     console.log('Ejecutando getRoomsByRoomTypeId');
 
-    const response = await fetch(`http://localhost:3000/rooms/roomtype/${roomTypeId}`, {
+    const response = await fetch(`http://rutaviajera-backend-production.up.railway.app/rooms/roomtype/${roomTypeId}`, {
       method: "GET",
       headers: {
         "Content-Type": "application/json",
@@ -425,7 +425,7 @@ export const deleteRoomById = async (roomId: string) => {
   try {
     const token = localStorage.getItem("token")
     if (!token) throw new Error('No estás autorizado.')
-    const response = await fetch(`http://localhost:3000/rooms/${roomId}`, {
+    const response = await fetch(`http://rutaviajera-backend-production.up.railway.app/rooms/${roomId}`, {
       method: "DELETE",
       headers: {
         "Content-Type": "application/json",
@@ -445,7 +445,7 @@ export const updateRoomDetails = async (roomId: string, selectedRoom: Partial<IR
   if (!token) throw new Error('No estás autorizado.')
   console.log('Ejecutando updateRoomDetails');
 
-  const response = await fetch(`http://localhost:3000/rooms/${roomId}`, {
+  const response = await fetch(`http://rutaviajera-backend-production.up.railway.app/rooms/${roomId}`, {
     method: "PUT",
     headers: {
       "Content-Type": "application/json",

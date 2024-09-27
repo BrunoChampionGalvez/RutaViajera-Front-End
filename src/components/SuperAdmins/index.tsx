@@ -49,7 +49,7 @@ const SuperAdminSignUpForm: React.FC = () => {
                             try {
                                 const token = localStorage.getItem("token");
                                 if (!token) throw new Error('No estás autorizado.');
-                                const response = await fetch('http://localhost:3000/auth/superAdminSignUp', {
+                                const response = await fetch('http://rutaviajera-backend-production.up.railway.app/auth/superAdminSignUp', {
                                     method: "POST",
                                     headers: {
                                         "Content-Type": "application/json",

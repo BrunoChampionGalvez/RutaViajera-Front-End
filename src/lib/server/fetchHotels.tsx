@@ -16,7 +16,7 @@ export const postHotel = async (hotel: IHotelRegisterPost) => {
 
   try {
     const response = await fetch(
-      "http://localhost:3000/hotels",
+      "http://rutaviajera-backend-production.up.railway.app/hotels",
       {
         method: "POST",
         headers: {
@@ -43,7 +43,7 @@ export const postHotel = async (hotel: IHotelRegisterPost) => {
 export const postRoomType = async (roomType: Partial<IRoomType>) => {
   const token = typeof window !== "undefined" && localStorage.getItem("token");
   const response = await fetch(
-    "http://localhost:3000/roomstype",
+    "http://rutaviajera-backend-production.up.railway.app/roomstype",
     {
       method: "POST",
       headers: {
@@ -67,7 +67,7 @@ export const postRoom = async (rooms: string[], roomTypeId: string | null) => {
         roomNumber: room,
         roomsTypeId: roomTypeId
       }
-      const response = await fetch("http://localhost:3000/rooms", {
+      const response = await fetch("http://rutaviajera-backend-production.up.railway.app/rooms", {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
@@ -89,7 +89,7 @@ export const postRoom = async (rooms: string[], roomTypeId: string | null) => {
 export const getHotelById = async (id: string) => {
   try {
     const response = await fetch(
-      `http://localhost:3000/hotels/${id}`,
+      `http://rutaviajera-backend-production.up.railway.app/hotels/${id}`,
       {
         cache: "no-cache",
       }
@@ -110,7 +110,7 @@ export const fetchHotelsByAdminId = async (id: string) => {
   }
 
   const response = await fetch(
-    `http://localhost:3000/hotels/hotelAdmin/${id}`,
+    `http://rutaviajera-backend-production.up.railway.app/hotels/hotelAdmin/${id}`,
     {
       method: "GET",
       headers: {
@@ -136,7 +136,7 @@ export const fetchHotelsByAdminId = async (id: string) => {
 export const getHotels = async () => {
   try {
     const response = await fetch(
-      "http://localhost:3000/hotels"
+      "http://rutaviajera-backend-production.up.railway.app/hotels"
     );
     if (response.ok) {
       const data = await response.json();
@@ -153,7 +153,7 @@ export const getHotels = async () => {
 export const getHotelsBySearch = async (searchQuery: string) => {
   try {
     const response = await fetch(
-      `http://localhost:3000/hotels/search?search=${searchQuery}`
+      `http://rutaviajera-backend-production.up.railway.app/hotels/search?search=${searchQuery}`
     );
     if (response.ok) {
       const data = await response.json();
@@ -192,7 +192,7 @@ export const postBooking = async (booking: {
   const token = typeof window !== "undefined" && localStorage.getItem("token");
   try {
     const response = await fetch(
-      "http://localhost:3000/bookings",
+      "http://rutaviajera-backend-production.up.railway.app/bookings",
       {
         method: "POST",
         headers: {
@@ -216,7 +216,7 @@ export const postBooking = async (booking: {
 
 // export const postBooking = async (booking: ICreateBooking) => {
 //   const token = typeof window !== "undefined" && localStorage.getItem("token");
-//   const response = await fetch("http://localhost:3000/bookings", {
+//   const response = await fetch("http://rutaviajera-backend-production.up.railway.app/bookings", {
 //     method: "POST",
 //     headers: {
 //       "Content-Type": "application/json",
@@ -229,13 +229,13 @@ export const postBooking = async (booking: {
 // };
 
 export const getRoomTypesByHotelId = async (
-  hotelId: string
+  hotelId: string | string[] | undefined
 ): Promise<IRoomTypeRegister[]> => {
   try {
     const token = localStorage.getItem("token");
 
     const response = await fetch(
-      `http://localhost:3000/roomstype/hotel/${hotelId}`,
+      `http://rutaviajera-backend-production.up.railway.app/roomstype/hotel/${hotelId}`,
       {
         headers: {
           Authorization: `Bearer ${token}`,
@@ -272,7 +272,7 @@ export const updateHotel = async (hotelId: string, hotelData: any) => {
   const token = localStorage.getItem("token");
 
   const response = await fetch(
-    `http://localhost:3000/hotels/${hotelId}`,
+    `http://rutaviajera-backend-production.up.railway.app/hotels/${hotelId}`,
     {
       method: "PUT",
       headers: {
@@ -299,7 +299,7 @@ export const deleteHotel = async (hotelId: string) => {
   }
 
   const response = await fetch(
-    `http://localhost:3000/hotels/${hotelId}`,
+    `http://rutaviajera-backend-production.up.railway.app/hotels/${hotelId}`,
     {
       method: "DELETE",
       headers: {

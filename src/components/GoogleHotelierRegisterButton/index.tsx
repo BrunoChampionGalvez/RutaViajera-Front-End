@@ -10,7 +10,7 @@ const GoogleHotelierRegisterButton = () => {
 
   const handleGoogleRegister = () => {
     window.location.href =
-      "http://localhost:3000/auth/api/google/register/hotelAdmin";
+      "http://rutaviajera-backend-production.up.railway.app/auth/api/google/register/hotelAdmin";
   };
 
   useEffect(() => {
