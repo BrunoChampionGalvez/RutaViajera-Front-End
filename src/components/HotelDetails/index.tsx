@@ -153,7 +153,7 @@ const HotelDetail: React.FC<Props> = ({ hotel }) => {
       const roomType = roomTypes.find(
         (roomType) => roomType.id === current.roomTypeId
       );
-      if (roomType) {
+      if (roomType?.price) {
         const price = roomType.price;
         const days = totalDays;
         return acc + price * days;
