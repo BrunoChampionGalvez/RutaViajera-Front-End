@@ -174,7 +174,7 @@ export const UserProvider = ({ children }: { children: React.ReactNode }) => {
 
     try {
       const response = await fetch(
-        `https://rutaviajera-backend-production.up.railway.app/bookings/hotel/${hotelId}`,
+        `http://localhost:3000/bookings/hotel/${hotelId}`,
         {
           headers: {
             Authorization: `Bearer ${token}`,

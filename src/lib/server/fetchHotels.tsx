@@ -243,7 +243,7 @@ export const getRoomTypesByHotelId = async (
       }
     );
     if (!response.ok) {
-      throw new Error(`HTTP error! Status: ${response.status}`);
+      throw new Error(`No room types found for that hotel. Status: ${response.status}`);
     }
     const data = await response.json();
     console.log("Datos JSON recibidos:", data);

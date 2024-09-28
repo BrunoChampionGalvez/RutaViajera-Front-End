@@ -10,7 +10,7 @@ const GoogleCustomerRegisterButton = () => {
 
   const handleGoogleRegister = () => {
     window.location.href =
-      "https://rutaviajera-backend-production.up.railway.app/auth/api/google/register/customer";
+      "http://localhost:3000/auth/api/google/register/customer";
   };
 
   useEffect(() => {

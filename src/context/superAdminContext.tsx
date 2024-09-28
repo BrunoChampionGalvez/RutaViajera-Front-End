@@ -156,7 +156,7 @@ export const SuperAdminProvider = ({
     async (searchQuery: string): Promise<ICustomerDetails[]> => {
       try {
         const response = await fetch(
-          `https://rutaviajera-backend-production.up.railway.app/customers/search?search=${searchQuery}`
+          `http://localhost:3000/customers/search?search=${searchQuery}`
         );
         if (!response.ok) {
           throw new Error(`HTTP error status: ${response.status}`);
@@ -373,7 +373,7 @@ export const SuperAdminProvider = ({
     async (searchQuery: string): Promise<IHotelAdminDetails[]> => {
       try {
         const response = await fetch(
-          `https://rutaviajera-backend-production.up.railway.app/hotel-admins/search?search=${searchQuery}`
+          `http://localhost:3000/hotel-admins/search?search=${searchQuery}`
         );
         if (!response.ok) {
           throw new Error(`HTTP error status: ${response.status}`);
@@ -429,7 +429,7 @@ export const SuperAdminProvider = ({
     async (hotelAdminId: string, searchQuery: string): Promise<IHotelOfSuperAdmin[]> => {
       try {
         const response = await fetch(
-          `https://rutaviajera-backend-production.up.railway.app/hotels/search/hotelAdmin?hotelAdminId=${hotelAdminId}&search=${searchQuery}`
+          `http://localhost:3000/hotels/search/hotelAdmin?hotelAdminId=${hotelAdminId}&search=${searchQuery}`
         );
         console.log(response);
         
@@ -454,7 +454,7 @@ export const SuperAdminProvider = ({
     async (hotelId: string, searchQuery: string): Promise<IReviewOfSuperAdmin[]> => {
       try {
         const response = await fetch(
-          `https://rutaviajera-backend-production.up.railway.app/reviews/search?search=${searchQuery}&hotelId=${hotelId}`
+          `http://localhost:3000/reviews/search?search=${searchQuery}&hotelId=${hotelId}`
         );
         console.log(response);
 
@@ -509,7 +509,7 @@ export const SuperAdminProvider = ({
     async (hotelId: string, searchQuery: string): Promise<IRoomTypeOfSuperAdmin[]> => {
       try {
         const response = await fetch(
-          `https://rutaviajera-backend-production.up.railway.app/roomstype/search?search=${searchQuery}&hotelId=${hotelId}`
+          `http://localhost:3000/roomstype/search?search=${searchQuery}&hotelId=${hotelId}`
         );
         console.log(response);
 
@@ -574,7 +574,7 @@ export const SuperAdminProvider = ({
     async (roomTypeId: string, searchQuery: string): Promise<IRoomOfSuperAdmin[]> => {
       try {
         const response = await fetch(
-          `https://rutaviajera-backend-production.up.railway.app/rooms/search?search=${searchQuery}&roomTypeId=${roomTypeId}`
+          `http://localhost:3000/rooms/search?search=${searchQuery}&roomTypeId=${roomTypeId}`
         );
         console.log(response);
 

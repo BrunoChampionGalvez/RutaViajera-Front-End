@@ -88,7 +88,7 @@ export const HotelProvider = ({ children }: { children: React.ReactNode }) => {
     async (searchQuery: string): Promise<IHotelDetail[]> => {
       try {
         const response = await fetch(
-          `https://rutaviajera-backend-production.up.railway.app/hotels/search?search=${searchQuery}`
+          `http://localhost:3000/hotels/search?search=${searchQuery}`
         );
         console.log(response);
         
@@ -109,7 +109,7 @@ export const HotelProvider = ({ children }: { children: React.ReactNode }) => {
     async (queryParams: string): Promise<IHotelDetail[]> => {
       try {
         const response = await fetch(
-          `https://rutaviajera-backend-production.up.railway.app/hotels/filters?${queryParams}`
+          `http://localhost:3000/hotels/filters?${queryParams}`
         );
         console.log(response);
         

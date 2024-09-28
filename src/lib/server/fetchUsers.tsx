@@ -18,7 +18,7 @@ import {
 export const postCustomerRegister = async (user: Omit<IUser, "id">) => {
   try {
     const response = await fetch(
-      "https://rutaviajera-backend-production.up.railway.app/auth/cxSignUp",
+      "http://localhost:3000/auth/cxSignUp",
       {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -41,7 +41,7 @@ export const postCustomerRegister = async (user: Omit<IUser, "id">) => {
 export const postAdminRegister = async (user: Omit<IUser, "id">) => {
   try {
     const response = await fetch(
-      "https://rutaviajera-backend-production.up.railway.app/auth/adminSignUp",
+      "http://localhost:3000/auth/adminSignUp",
       {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -63,7 +63,7 @@ export const postAdminRegister = async (user: Omit<IUser, "id">) => {
 export const postLogin = async (credentials: ILogin) => {
   try {
     const response = await fetch(
-      "https://rutaviajera-backend-production.up.railway.app/auth/SignIn",
+      "http://localhost:3000/auth/SignIn",
       {
         method: "POST",
         headers: {
@@ -87,7 +87,7 @@ export const postLogin = async (credentials: ILogin) => {
 export const sendEmail = async (credentials: Partial<ILogin>) => {
   try {
     const response = await fetch(
-      "https://rutaviajera-backend-production.up.railway.app/auth/password-recovery",
+      "http://localhost:3000/auth/password-recovery",
       {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -106,7 +106,7 @@ export const tokenVerified = async (
 ) => {
   try {
     const response = await fetch(
-      "https://rutaviajera-backend-production.up.railway.app/auth/api/reset-password",
+      "http://localhost:3000/auth/api/reset-password",
       {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -125,7 +125,7 @@ export const postReview = async (review: ICreateReview) => {
   console.log("Token:", token);
   try {
     const response = await fetch(
-      "https://rutaviajera-backend-production.up.railway.app/reviews",
+      "http://localhost:3000/reviews",
       {
         method: "POST",
         headers: {
@@ -153,7 +153,7 @@ export const postReview = async (review: ICreateReview) => {
 export const getAllReviews = async () => {
   try {
     const response = await fetch(
-      "https://rutaviajera-backend-production.up.railway.app/reviews"
+      "http://localhost:3000/reviews"
     );
     if (response.ok) {
       const data = await response.json();
@@ -181,7 +181,7 @@ export const putUpdateProfile = async (
     
     
     const response = await fetch(
-      `https://rutaviajera-backend-production.up.railway.app/customers/${userId}`,
+      `http://localhost:3000/customers/${userId}`,
       {
         method: "PUT",
         headers: {
@@ -214,7 +214,7 @@ export const putUpdateProfileHotelier = async (
     const token =
       typeof window !== "undefined" && localStorage.getItem("token");
     const response = await fetch(
-      `https://rutaviajera-backend-production.up.railway.app/hotel-admins/${userId}`,
+      `http://localhost:3000/hotel-admins/${userId}`,
       {
         method: "PUT",
         headers: {
@@ -243,7 +243,7 @@ export const fetchCustomerBookings = async (customerId: string) => {
   }
 
   const response = await fetch(
-    `https://rutaviajera-backend-production.up.railway.app/bookings/customer/${customerId}`,
+    `http://localhost:3000/bookings/customer/${customerId}`,
     {
       method: "GET",
       headers: {
@@ -269,7 +269,7 @@ export const cancelBooking = async (bookingId: string) => {
     throw new Error("No se encontró el token de autenticación.");
   }
   const response = await fetch(
-    `https://rutaviajera-backend-production.up.railway.app/bookings/cancel/${bookingId}`,
+    `http://localhost:3000/bookings/cancel/${bookingId}`,
     {
       method: "PUT",
       headers: {
@@ -295,7 +295,7 @@ export const fetchCustomerDetails = async (customerId: string) => {
   console.log('1 fetchCustomerDetails');
   
   const response = await fetch(
-    `https://rutaviajera-backend-production.up.railway.app/customers/${customerId}`,
+    `http://localhost:3000/customers/${customerId}`,
     {
       method: "GET",
       headers: {
@@ -316,7 +316,7 @@ export const fetchHotelierDetails = async (hotelierId: string) => {
   console.log('1 fetchHotelierDetails');
 
   const response = await fetch(
-    `https://rutaviajera-backend-production.up.railway.app/hotel-admins/${hotelierId}`,
+    `http://localhost:3000/hotel-admins/${hotelierId}`,
     {
       method: "GET",
       headers: {
