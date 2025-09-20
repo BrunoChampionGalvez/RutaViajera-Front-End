@@ -244,7 +244,7 @@ export default function RegisterForm() {
         showToast("success", <p>¡Registro Exitoso!</p>);
         await router.push("/login");
       } else {
-        showToast("error", <p>Error al realizar registro</p>);
+        showToast("error", <p>Error: correo ya en uso</p>);
         console.log(success);
       }
     } catch (error) {

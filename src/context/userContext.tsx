@@ -32,6 +32,8 @@ export const UserContext = createContext<IUserContextType>({
   setIsLogged: () => { },
   isAdmin: false,
   setIsAdmin: () => { },
+  isSuperAdmin: false,
+  setIsSuperAdmin: () => { },
   login: async () => false,
   getCustomerDetails: async () => { },
   getHotelierDetails: async () => { },
@@ -51,6 +53,7 @@ export const UserProvider = ({ children }: { children: React.ReactNode }) => {
   const [user, setUser] = useState<Partial<IUserResponse> | null>(null);
   const [isLogged, setIsLogged] = useState(false);
   const [isAdmin, setIsAdmin] = useState(false);
+  const [isSuperAdmin, setIsSuperAdmin] = useState(false);
   const [reviews, setReviews] = useState<IReviewResponse[]>([]);
   const [bookings, setBookings] = useState<IBooking[]>([]);
 
@@ -88,28 +91,35 @@ export const UserProvider = ({ children }: { children: React.ReactNode }) => {
       if (data.token) {
         const decodedToken = jwtDecode<IDecodeToken>(data.token);
         console.log("Token decodificado", decodedToken);
-
-        const user: IUserResponse = {
+        // roles puede venir ya en el token después del ajuste backend
+        const rolesFromToken = (decodedToken as any).roles as string[] | undefined;
+        const baseUser: Partial<IUserResponse> = {
           id: decodedToken.id.toString(),
           name: decodedToken.name,
-          lastName: data.user.lastName,
+          lastName: data.user?.lastName,
           email: decodedToken.email,
-          phone: data.user.phone,
-          country: data.user.country,
-          city: data.user.city,
-          address: data.user.address,
-          birthDate: data.user.birthDate,
+          phone: data.user?.phone,
+          country: data.user?.country,
+          city: data.user?.city,
+          address: data.user?.address,
+          birthDate: data.user?.birthDate,
           isAdmin: decodedToken.isAdmin,
-          hotels: data.user.hotels,
-          reviews: data.user.reviews,
-          bookings: data.user.bookings,
+          hotels: data.user?.hotels,
+          reviews: data.user?.reviews,
+          bookings: data.user?.bookings,
         };
+  // Eliminamos verificación extra: el backend protege rutas con RolesGuard.
+        if (rolesFromToken) (baseUser as any).roles = rolesFromToken;
         const tokenExpDate = new Date(decodedToken.exp).getUTCDate()
 
-        setUser(user);
+        setUser(baseUser as IUserResponse);
         setIsLogged(true);
-        setIsAdmin(decodedToken.isAdmin);
+  setIsAdmin(decodedToken.isAdmin);
+  if ((decodedToken as any).superAdmin) setIsSuperAdmin(true);
+  if ((decodedToken as any).superAdmin) setIsSuperAdmin(true);
         localStorage.setItem("token", data.token);
+        localStorage.setItem('user', JSON.stringify(baseUser));
+
         return true;
       }
       return false;
@@ -152,12 +162,40 @@ export const UserProvider = ({ children }: { children: React.ReactNode }) => {
     });
   };
 
+  // Cache sencilla para evitar spam de peticiones si múltiples componentes disparan la misma carga
+  const adminHotelsCacheRef = (globalThis as any).__adminHotelsCacheRef || ((globalThis as any).__adminHotelsCacheRef = new Map());
   const getHotelsByAdmin = useCallback(async (adminId: string) => {
+    if (!adminId) return;
     try {
+      if (adminHotelsCacheRef.has(adminId)) {
+        const cached = adminHotelsCacheRef.get(adminId);
+        setUser(prev => {
+          if (!prev) return prev;
+          const prevHotels = prev.hotels || [];
+          const sameLength = prevHotels.length === cached.length;
+          const sameIds = sameLength && prevHotels.every((h: any, i: number) => h.id === cached[i].id);
+          if (sameIds) return prev; // evita re-render infinito
+          return { ...prev, hotels: cached };
+        });
+        return;
+      }
+      if ((adminHotelsCacheRef.get('pending') || new Set()).has(adminId)) {
+        return; // Ya hay una petición en curso para este admin
+      }
+      const pending: Set<string> = adminHotelsCacheRef.get('pending') || new Set();
+      pending.add(adminId);
+      adminHotelsCacheRef.set('pending', pending);
       const data = await fetchHotelsByAdminId(adminId);
-      setUser((prevUser) =>
-        prevUser ? { ...prevUser, hotels: data } : prevUser
-      );
+      adminHotelsCacheRef.set(adminId, data);
+      pending.delete(adminId);
+      setUser(prevUser => {
+        if (!prevUser) return prevUser;
+        const prevHotels = prevUser.hotels || [];
+        const sameLength = prevHotels.length === data.length;
+        const sameIds = sameLength && prevHotels.every((h: any, i: number) => h.id === data[i].id);
+        if (sameIds) return prevUser;
+        return { ...prevUser, hotels: data };
+      });
     } catch (error) {
       console.error("Error al obtener los hoteles del admin:", error);
     }
@@ -174,7 +212,7 @@ export const UserProvider = ({ children }: { children: React.ReactNode }) => {
 
     try {
       const response = await fetch(
-        `https://rutaviajera-backend-production.up.railway.app/bookings/hotel/${hotelId}`,
+        `${process.env.NEXT_PUBLIC_API_URL}/bookings/hotel/${hotelId}`,
         {
           headers: {
             Authorization: `Bearer ${token}`,
@@ -234,6 +272,7 @@ export const UserProvider = ({ children }: { children: React.ReactNode }) => {
         setUser(null);
         setIsLogged(false);
         setIsAdmin(false);
+  setIsSuperAdmin(false);
         if (typeof window !== "undefined") {
           localStorage.removeItem("token");
         }
@@ -248,8 +287,26 @@ export const UserProvider = ({ children }: { children: React.ReactNode }) => {
         setIsLogged(true);
         const decodedToken = jwtDecode<IDecodeToken>(token);
         setIsAdmin(decodedToken.isAdmin);
-
+  if ((decodedToken as any).superAdmin) setIsSuperAdmin(true);
+        // Try to load persisted user
+        const storedUser = localStorage.getItem("user");
+        if (storedUser) {
+          setUser(JSON.parse(storedUser) as IUserResponse);
+        } else {
+          // Reconstruct minimal user object from token so components (e.g., Bookings) have an id
+            const minimalUser: any = {
+              id: decodedToken.id.toString(),
+              name: decodedToken.name,
+              email: decodedToken.email,
+              isAdmin: decodedToken.isAdmin,
+              bookings: [],
+              roles: (decodedToken as any).roles || (decodedToken.isAdmin ? ['admin'] : ['user'])
+            };
+            setUser(minimalUser as IUserResponse);
+            localStorage.setItem('user', JSON.stringify(minimalUser));
+        }
         if (decodedToken.id) {
+          // Fetch bookings & admin hotels after ensuring user id is available
           getBookings(decodedToken.id);
           if (decodedToken.isAdmin) {
             getHotelsByAdmin(decodedToken.id);
@@ -258,13 +315,8 @@ export const UserProvider = ({ children }: { children: React.ReactNode }) => {
       } else {
         setIsLogged(false);
       }
-
-      const storedUser = localStorage.getItem("user");
-      if (storedUser) {
-        setUser(JSON.parse(storedUser) as IUserResponse);
-      } else {
-        setUser(null);
-      }
+      // If no token, clear any stale user
+      if (!token) setUser(null);
     }
   }, [getBookings, getHotelsByAdmin]);
 
@@ -277,6 +329,8 @@ export const UserProvider = ({ children }: { children: React.ReactNode }) => {
         setIsLogged,
         isAdmin,
         setIsAdmin,
+        isSuperAdmin,
+        setIsSuperAdmin,
         login,
         getCustomerDetails,
         getHotelierDetails,

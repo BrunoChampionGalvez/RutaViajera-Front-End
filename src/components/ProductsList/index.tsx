@@ -22,32 +22,46 @@ function ProductsList({ searchQuery, queryParams }: IProductsListProps) {
   };
 
   useEffect(() => {
+    console.log("ProductsList useEffect triggered with:", { searchQuery, queryParams });
+    
     if (searchQuery) {
       console.log("Ejecutando búsqueda con:", searchQuery);
       fetchHotelsBySearch(searchQuery).then((data) => {
+        console.log("Search results:", data);
         if (Array.isArray(data)) {
           setFilteredHotels(data);
         } else {
           setFilteredHotels([]);
         }
+      }).catch((error) => {
+        console.error("Error fetching hotels by search:", error);
+        setFilteredHotels([]);
       });
     } else if (queryParams) {
+      console.log("Ejecutando filtros con:", queryParams);
       fetchHotelsByFilters(queryParams).then((data) => {
+        console.log("Filter results:", data);
         if (Array.isArray(data)) {
           setFilteredHotels(data);
         } else {
           setFilteredHotels([]);
         }
-        console.log(data);
-        
+      }).catch((error) => {
+        console.error("Error fetching hotels by filters:", error);
+        setFilteredHotels([]);
       });
     } else {
+      console.log("Fetching all hotels...");
       fetchHotels().then((data) => {
+        console.log("All hotels results:", data);
         if (Array.isArray(data)) {
           setFilteredHotels(data);
         } else {
           setFilteredHotels([]);
         }
+      }).catch((error) => {
+        console.error("Error fetching all hotels:", error);
+        setFilteredHotels([]);
       });
     }
   }, [searchQuery, queryParams, fetchHotels, fetchHotelsBySearch]);

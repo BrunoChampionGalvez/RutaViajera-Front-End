@@ -2,7 +2,7 @@
 
 import { useContext, useEffect, useState } from "react";
 import Image from "next/image";
-import Link from "next/link";
+import HotelCreationWizard from "@/components/HotelCreationWizard";
 import { UserContext } from "@/context/userContext";
 import { Swiper, SwiperSlide } from "swiper/react";
 import "swiper/css";
@@ -18,12 +18,15 @@ function MyHotels() {
   const [selectedHotel, setSelectedHotel] = useState<IAdminHotel | null>(null);
   const [isModalOpen, setIsModalOpen] = useState(false);
   const hotels = user?.hotels || [];
+  const [isWizardOpen, setIsWizardOpen] = useState(false);
+  const [fetchedOnce, setFetchedOnce] = useState(false);
 
   useEffect(() => {
-    if (user?.id && user.isAdmin) {
+    if (!fetchedOnce && user?.id && user.isAdmin) {
       getHotelsByAdmin(user.id);
+      setFetchedOnce(true);
     }
-  }, [user, getHotelsByAdmin]);
+  }, [user?.id, user?.isAdmin, getHotelsByAdmin, fetchedOnce]);
 
   const handleEditClick = (hotel: IAdminHotel) => {
     setSelectedHotel(hotel);
@@ -62,7 +65,7 @@ function MyHotels() {
   };
 
   return (
-    <div>
+    <div className="flex flex-col h-full w-full">
       {isModalOpen && (
         <EditHotelModal
           hotel={selectedHotel}
@@ -71,54 +74,44 @@ function MyHotels() {
           onDelete={handleDeleteHotel}
         />
       )}
-      <div className="flex justify-between items-center mx-4 my-6">
+      <div className="flex justify-between items-center mx-4 py-4 bg-white/90 backdrop-blur supports-[backdrop-filter]:bg-white/70 sticky top-0 z-20 border-b">
         <div className="flex-1">
           <h1 className="text-4xl font-semibold">Mis hoteles</h1>
         </div>
         <div className="flex justify-end">
-          <Link
-            href={"/rooms-number"}
-            className="flex px-4 py-3 text-white bg-red-500 hover:bg-red-600 focus:bg-red-700 rounded-md mr-3"
-          >
-            Añadir Número de Habitación
-          </Link>
-          <Link
-            href={"/post-hotel-types"}
-            className="flex px-4 py-3 text-white bg-red-500 hover:bg-red-600 focus:bg-red-700 rounded-md mr-3"
-          >
-            Añadir Tipo de Habitación
-          </Link>
-          <Link
-            href={"/post-hotel"}
+          <button
+            onClick={() => setIsWizardOpen(true)}
             className="flex px-4 py-3 text-white bg-red-500 hover:bg-red-600 focus:bg-red-700 rounded-md"
           >
             <Image
-              src={"/create2.png"}
-              alt="Crear"
+              src={'/create2.png'}
+              alt='Crear'
               width={24}
               height={24}
-              className="mr-2"
+              className='mr-2'
             />
-            Publicar un hotel
-          </Link>
+            Publicar hotel
+          </button>
         </div>
       </div>
-      <div className="p-8">
-        <Swiper
-          spaceBetween={16}
-          slidesPerView={1}
-          breakpoints={{
-            340: { slidesPerView: 1, spaceBetween: 15 },
-            700: { slidesPerView: 2, spaceBetween: 15 },
-            1024: { slidesPerView: 3, spaceBetween: 15 },
-          }}
-          freeMode={true}
-          pagination={{
-            clickable: true,
-          }}
-          modules={[FreeMode, Pagination]}
-          className="max-w-[90%] lg:max-w-[80%]"
-        >
+      {isWizardOpen && (
+        <HotelCreationWizard onFinished={() => setIsWizardOpen(false)} />
+      )}
+      <div className="p-6 flex-1 overflow-hidden">
+        <div className="w-full">
+          <Swiper
+            spaceBetween={20}
+            slidesPerView={1}
+            breakpoints={{
+              640: { slidesPerView: 1, spaceBetween: 20 },
+              900: { slidesPerView: 2, spaceBetween: 24 },
+              1280: { slidesPerView: 3, spaceBetween: 24 },
+            }}
+            freeMode
+            pagination={{ clickable: true }}
+            modules={[FreeMode, Pagination]}
+            className="w-full"
+          >
           {hotels && hotels.length > 0 ? (
             hotels.map((hotel) => (
               <SwiperSlide key={hotel.id} className="w-full max-w-xs">
@@ -186,7 +179,8 @@ function MyHotels() {
               No tienes hoteles registrados.
             </div>
           )}
-        </Swiper>
+          </Swiper>
+        </div>
       </div>
     </div>
   );

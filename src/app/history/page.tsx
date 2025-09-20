@@ -16,8 +16,9 @@ function History () {
             </p>
             <br />
             <p>
-              Nuestro equipo está compuesto por tres desarrolladores back-end:{" "}
-              <strong>Hernán Cáceres, Farkin Coquil y Bruno Champion;</strong> y
+              Nuestro equipo está compuesto un desarrollador full-stack {} por dos desarrolladores back-end:{" "}
+              <strong>Bruno Champion;</strong>, dos desarrolladores back-end:{" "}
+              <strong>Hernán Cáceres y Farkin Coquil;</strong> y
               tres desarrolladores front-end:{" "}
               <strong>
                 Santiago Giraldo, Jessica Patiño y Esteban Romero.

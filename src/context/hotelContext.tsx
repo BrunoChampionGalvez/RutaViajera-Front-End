@@ -62,7 +62,9 @@ export const HotelProvider = ({ children }: { children: React.ReactNode }) => {
 
   const fetchHotels = useCallback(async (): Promise<IHotelDetail[]> => {
     try {
+      console.log("HotelContext: Fetching hotels from API...");
       const data = await getHotels();
+      console.log("HotelContext: Received data:", data);
       setHotels(data);
       if (typeof window !== "undefined") {
         localStorage.setItem("hotels", JSON.stringify(data));
@@ -88,7 +90,7 @@ export const HotelProvider = ({ children }: { children: React.ReactNode }) => {
     async (searchQuery: string): Promise<IHotelDetail[]> => {
       try {
         const response = await fetch(
-          `https://rutaviajera-backend-production.up.railway.app/hotels/search?search=${searchQuery}`
+          `${process.env.NEXT_PUBLIC_API_URL}/hotels/search?search=${searchQuery}`
         );
         console.log(response);
         
@@ -109,7 +111,7 @@ export const HotelProvider = ({ children }: { children: React.ReactNode }) => {
     async (queryParams: string): Promise<IHotelDetail[]> => {
       try {
         const response = await fetch(
-          `https://rutaviajera-backend-production.up.railway.app/hotels/filters?${queryParams}`
+          `${process.env.NEXT_PUBLIC_API_URL}/hotels/filters?${queryParams}`
         );
         console.log(response);
         

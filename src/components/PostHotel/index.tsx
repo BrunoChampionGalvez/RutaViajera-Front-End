@@ -14,10 +14,15 @@ import { UserContext } from "@/context/userContext";
 import Link from "next/link";
 import { HotelContext } from "@/context/hotelContext";
 
-interface HotelRegisterProps { }
+interface HotelRegisterProps {
+  onHotelCreated?: (hotel: any) => void; // se tipará mejor luego con IHotel
+  suppressRedirect?: boolean; // si true no hace push automático
+}
 
-const HotelRegister: React.FC<HotelRegisterProps> = () => {
-  const { user, isAdmin, addNewHotel } = useContext(UserContext);
+const HotelRegister: React.FC<HotelRegisterProps> = ({ onHotelCreated, suppressRedirect = false }) => {
+  // NOTE: Se eliminó la dependencia de isAdmin para no bloquear la creación si el flag local está desincronizado.
+  // El backend (NestJS) tiene RolesGuard y devolverá 403 si realmente el usuario no posee el rol.
+  const { user, addNewHotel } = useContext(UserContext);
   const { setHotelBeingCreated } = useContext(HotelContext)
   const router = useRouter();
   const [hotelLocation, setHotelLocation] = useState<ILocationDetail | null>(
@@ -261,23 +266,47 @@ const HotelRegister: React.FC<HotelRegisterProps> = () => {
       setSubmitting(false);
       return;
     }
+
+    // Validación mínima: sólo requerimos que exista user.id. El rol se valida en el backend.
+    if (!user?.id) {
+      console.error("Hotel creation blocked: invalid user id", { user });
+      alert("No se pudo identificar tu usuario. Inicia sesión nuevamente.");
+      setSubmitting(false);
+      return;
+    }
+
+    // No hacemos revalidación adicional: el backend aplicará RolesGuard (403) si el token no corresponde.
+
+    // Validar formato básico UUID (simple regex) para evitar 404 'this Admin is not available'
+    const uuidRegex = /^[0-9a-fA-F-]{30,}$/; // la longitud varía pero evita strings vacíos o muy cortos
+    if (!uuidRegex.test(user.id)) {
+      console.warn("El id del admin no parece un UUID válido:", user.id);
+    }
     
     const buffersToUpload = {
       arraysOfBuffers: selectedBuffers.map(buffer => Array.from(buffer)) // Convert Uint8Array to array of numbers
     };
     
-    const response = await fetch('/api/upload-hotel-images', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(buffersToUpload)
-    })
-
-    const uploadedUrls = await response.json()
+    let uploadedUrls: string[] = [];
+    try {
+      const response = await fetch('/api/upload-hotel-images', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(buffersToUpload)
+      });
+      if (response.ok) {
+        uploadedUrls = await response.json();
+      } else {
+        console.warn('Fallo al subir imágenes, se continuará sin ellas');
+      }
+    } catch (e) {
+      console.warn('Error subiendo imágenes (continuando sin imágenes):', e);
+    }
 
     const formData = {
       ...values,
       images: uploadedUrls,
-      hotel_admin_id: user?.id || "",
+      hotel_admin_id: user.id,
     };
 
     console.log("Datos que se envían al backend:", formData);
@@ -289,16 +318,29 @@ const HotelRegister: React.FC<HotelRegisterProps> = () => {
         
         addNewHotel(createdHotel);
         setHotelBeingCreated(createdHotel)
-        alert("Hotel registrado exitosamente");
-        router.push(`/post-hotel-types/${createdHotel.id}`);
+        // Callback externa (wizard) o flujo original
+        if (onHotelCreated) {
+          onHotelCreated(createdHotel);
+        }
+        if (!suppressRedirect) {
+          alert("Hotel registrado exitosamente");
+          router.push(`/post-hotel-types/${createdHotel.id}`);
+        }
       } else {
         alert("Error al registrar el hotel");
       }
-    } catch (error) {
-      console.error("Error al registrar el hotel:", error);
-      alert(
-        "Hubo un error al registrar el hotel. Por favor, intenta de nuevo."
-      );
+    } catch (error: any) {
+      console.error("Error al registrar el hotel (detalle):", error);
+      const rawMsg = error?.message || "Error desconocido";
+      if (rawMsg.includes('hotelero') || rawMsg.includes('Hotel admin id ausente')) {
+        alert(rawMsg);
+      } else if (/404/.test(rawMsg)) {
+        alert("No se pudo crear el hotel: el ID de hotelero no existe o tu sesión está desactualizada. Cierra sesión y vuelve a entrar como hotelero.");
+      } else if (/401|403/.test(rawMsg)) {
+        alert("No autorizado. Vuelve a iniciar sesión.");
+      } else {
+        alert(rawMsg.startsWith('Error en la solicitud') ? rawMsg : `Hubo un error al registrar el hotel. ${rawMsg}`);
+      }
     } finally {
       setSubmitting(false);
     }
@@ -306,7 +348,7 @@ const HotelRegister: React.FC<HotelRegisterProps> = () => {
 
   return (
     <div className="flex min-h-screen items-center justify-center">
-      {isAdmin ? (
+      {user?.id ? (
         <div className="flex w-full justify-center items-center">
           <div className="w-full max-w-md p-8">
             <div className="flex justify-center mb-8">
@@ -470,7 +512,7 @@ const HotelRegister: React.FC<HotelRegisterProps> = () => {
                   </div>
                   <div className="formDiv flex-1 mr-2">
                     <label htmlFor="services" className="formLabel">
-                      Servicios
+                      Servicios (separados por comas)
                     </label>
                     <Field
                       type="text"
@@ -542,17 +584,17 @@ const HotelRegister: React.FC<HotelRegisterProps> = () => {
           <div className=" max-w-md bg-white shadow-md rounded-md p-4 text-center">
             <Image
               src="/logo.png"
-              alt="Acceso Denegado"
+              alt="Inicia sesión"
               width={100}
               height={100}
               className="mb-4 mx-auto"
             />
-            <h1 className="text-2xl font-semibold mb-2">Acceso Denegado</h1>
+            <h1 className="text-2xl font-semibold mb-2">Inicia sesión</h1>
             <p className="mb-4">
-              No tienes permiso para acceder a esta página.
+              Debes iniciar sesión para registrar un hotel.
             </p>
-            <Link href="/home" className="btn-secondary">
-              Regresar a la página principal
+            <Link href="/login" className="btn-secondary">
+              Ir a iniciar sesión
             </Link>
           </div>
         </div>

@@ -1,9 +1,9 @@
 "use client";
 
 import { SuperAdminContext } from "@/context/superAdminContext";
-import { ICustomerOfSuperAdmin } from "@/interfaces";
+import { IBookingOfSuperAdmin } from "@/interfaces";
 import Link from "next/link";
-import { useContext, useEffect, useState } from "react";
+import { useContext, useEffect, useMemo, useState } from "react";
 import Sidebar from "../SidebarSuperAdmin";
 
 export default function SuperAdmin() {
@@ -12,55 +12,46 @@ export default function SuperAdmin() {
         setSidebarVisible(!isSidebarVisible);
     };
     const [isSidebarVisible, setSidebarVisible] = useState(false);
-    const [totalCustomers, setTotalCustomers] = useState<number>(0);
-    const [totalBookings, setTotalBookings] = useState<number>(0);
-    const [totalEarnings, setTotalEarnings] = useState<number>(0);
+    const [bookings, setBookings] = useState<IBookingOfSuperAdmin[] | null>(null);
+    const [loadingStats, setLoadingStats] = useState<boolean>(true);
+    const [error, setError] = useState<string | null>(null);
 
     useEffect(() => {
-        fetchBookings().then((data) => {
-            if (Array.isArray(data)) {
-                setTotalBookings(data.length);
-            } else {
-                console.error("fetchBookings did not return an array.");
-                setTotalBookings(0);
-            }
-        });
-    }, [fetchBookings]);
-
-    useEffect(() => {
-        fetchBookings().then((data) => {
-            if (Array.isArray(data)) {
-                let total: number = 0;
-                for (const booking of data) {
-                    total = total + booking.bookingDetails.total;
+        let isMounted = true;
+        (async () => {
+            setLoadingStats(true);
+            try {
+                const data = await fetchBookings();
+                if (isMounted) {
+                    setBookings(Array.isArray(data) ? data : []);
                 }
-                total = (total * 20) / 100;
-                setTotalEarnings(total);
-            } else {
-                console.error("fetchBookings did not return an array.");
-                setTotalEarnings(0);
+            } catch (e: any) {
+                console.error('Error cargando bookings para estadísticas', e);
+                if (isMounted) setError('No se pudieron cargar las estadísticas');
+            } finally {
+                if (isMounted) setLoadingStats(false);
             }
-        });
+        })();
+        return () => { isMounted = false; };
     }, [fetchBookings]);
 
-    useEffect(() => {
-        fetchBookings().then((data) => {
-            if (Array.isArray(data)) {
-                const customers: ICustomerOfSuperAdmin[] = [];
-                for (const booking of data) {
-                    customers.push(booking.customer);
-                    console.log(data);
-                    
-                }
-                
-                const uniqueCustomers = Array.from(new Set(customers));
-                setTotalCustomers(uniqueCustomers.length);
-            } else {
-                console.error("fetchCustomers did not return an array.");
-                setTotalCustomers(0);
-            }
-        });
-    }, [fetchBookings]);
+    // Memoize statistics to avoid unnecessary recalculations
+    const { totalBookings, totalCustomers, totalEarnings } = useMemo(() => {
+        if (!bookings || bookings.length === 0) {
+            return { totalBookings: 0, totalCustomers: 0, totalEarnings: 0 };
+        }
+        const totalBookings = bookings.length;
+        const customerIds = new Set<string>();
+        let gross = 0;
+        for (const b of bookings) {
+            if (b.customer?.id) customerIds.add(b.customer.id);
+            const val = b.bookingDetails?.total ?? 0;
+            gross += typeof val === 'number' ? val : 0;
+        }
+        // Comisión (20%) según lógica previa
+        const commission = (gross * 20) / 100;
+        return { totalBookings, totalCustomers: customerIds.size, totalEarnings: commission };
+    }, [bookings]);
 
     return (
         <div className="flex relative">
@@ -89,17 +80,18 @@ export default function SuperAdmin() {
                     <div className="flex flex-col md:flex-row justify-between">
                         <div className="flex-1 text-center mb-4 md:mb-0">
                             <h3 className="text-lg font-semibold">Cantidad de Compradores</h3>
-                            <p className="text-2xl">{totalCustomers}</p>
+                            <p className="text-2xl">{loadingStats ? '...' : totalCustomers}</p>
                         </div>
                         <div className="flex-1 text-center mb-4 md:mb-0">
                             <h3 className="text-lg font-semibold">Cantidad de Reservas</h3>
-                            <p className="text-2xl">{totalBookings}</p>
+                            <p className="text-2xl">{loadingStats ? '...' : totalBookings}</p>
                         </div>
                         <div className="flex-1 text-center">
                             <h3 className="text-lg font-semibold">Ingresos</h3>
-                            <p className="text-2xl">USD {totalEarnings}</p>
+                            <p className="text-2xl">USD {loadingStats ? '...' : totalEarnings.toFixed(2)}</p>
                         </div>
                     </div>
+                    {error && <p className="text-red-500 text-center mt-4 text-sm">{error}</p>}
                 </div>
 
 

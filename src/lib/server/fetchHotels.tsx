@@ -14,9 +14,19 @@ export const postHotel = async (hotel: IHotelRegisterPost) => {
     );
   }
 
+  // Validación defensiva: asegurar que venga hotel_admin_id con forma UUID básica
+  if (!hotel?.hotel_admin_id) {
+    console.warn('[postHotel] Falta hotel_admin_id en payload. Abortando antes de llamar API.', hotel);
+    throw new Error('Hotel admin id ausente. Vuelve a iniciar sesión como hotelero.');
+  }
+  const uuidRegex = /^[0-9a-fA-F-]{30,}$/;
+  if (!uuidRegex.test(hotel.hotel_admin_id)) {
+    console.warn('[postHotel] hotel_admin_id no parece UUID válido:', hotel.hotel_admin_id);
+  }
+
   try {
     const response = await fetch(
-      "https://rutaviajera-backend-production.up.railway.app/hotels",
+      `${process.env.NEXT_PUBLIC_API_URL}/hotels`,
       {
         method: "POST",
         headers: {
@@ -27,9 +37,20 @@ export const postHotel = async (hotel: IHotelRegisterPost) => {
       }
     );
     if (!response.ok) {
-      const errorData = await response.json();
-      console.error("Error en la solicitud:", errorData);
-      throw new Error(`Error en la solicitud: ${response.status}`);
+      let errorMsg = `Error en la solicitud: ${response.status}`;
+      try {
+        const errorData = await response.json();
+        console.error("Error en la solicitud backend:", errorData);
+        const backendMessage = errorData?.message || errorData?.error;
+        if (backendMessage === 'this Admin is not available') {
+          errorMsg = 'El ID de hotelero enviado no existe en la base de datos. Asegúrate de haber iniciado sesión como hotelero o de que tu registro de hotelero se haya creado correctamente.';
+        } else if (backendMessage) {
+          errorMsg += ` - ${backendMessage}`;
+        }
+      } catch (e) {
+        console.warn('No se pudo parsear JSON de error de crear hotel');
+      }
+      throw new Error(errorMsg);
     }
 
     const data = await response.json();
@@ -43,7 +64,7 @@ export const postHotel = async (hotel: IHotelRegisterPost) => {
 export const postRoomType = async (roomType: Partial<IRoomType>) => {
   const token = typeof window !== "undefined" && localStorage.getItem("token");
   const response = await fetch(
-    "https://rutaviajera-backend-production.up.railway.app/roomstype",
+    `${process.env.NEXT_PUBLIC_API_URL}/roomstype`,
     {
       method: "POST",
       headers: {
@@ -61,13 +82,32 @@ export const postRoomType = async (roomType: Partial<IRoomType>) => {
 
 export const postRoom = async (rooms: string[], roomTypeId: string | null) => {
   const token = typeof window !== "undefined" && localStorage.getItem("token");
+  const successes: any[] = [];
+  const failures: { roomNumber: string; error: string; nonJson?: boolean }[] = [];
+
+  if (!token) {
+    console.warn('[postRoom] Falta token en localStorage');
+    return { successes, failures: rooms.map(r => ({ roomNumber: r, error: 'Token ausente' })) };
+  }
+  if (!roomTypeId) {
+    console.warn('[postRoom] roomTypeId null, abortando batch');
+    return { successes, failures: rooms.map(r => ({ roomNumber: r, error: 'roomsTypeId faltante' })) };
+  }
+  // simple comprobación UUID (no estricta a versión) para advertir si no parece válido
+  const uuidLike = /^[0-9a-fA-F-]{30,}$/;
+  if (!uuidLike.test(roomTypeId)) {
+    console.warn('[postRoom] roomTypeId no parece UUID ->', roomTypeId);
+  }
+
   for (const room of rooms) {
     try {
-      const roomObjectToSend = {
-        roomNumber: room,
-        roomsTypeId: roomTypeId
+      const trimmed = room.trim();
+      if (!trimmed) {
+        failures.push({ roomNumber: room, error: 'roomNumber vacío' });
+        continue;
       }
-      const response = await fetch("https://rutaviajera-backend-production.up.railway.app/rooms", {
+      const roomObjectToSend = { roomNumber: trimmed, roomsTypeId: roomTypeId };
+      const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/rooms`, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
@@ -75,21 +115,45 @@ export const postRoom = async (rooms: string[], roomTypeId: string | null) => {
         },
         body: JSON.stringify(roomObjectToSend),
       });
-      if (!response.ok) throw new Error('Error posting rooms.')
-      const data = await response.json();
-      console.log(data);
-      
-      return data;
-    } catch {
-      console.error(`Error post room with roomNumber ${room}`)
+      if (!response.ok) {
+        const raw = await response.text();
+        let backendMsg = raw;
+        try {
+          const parsed = JSON.parse(raw);
+          backendMsg = parsed?.message || parsed?.error || raw;
+        } catch {
+          // respuesta no JSON (posible HTML / texto plano)
+        }
+        // Normaliza mensajes conocidos
+        const lowered = (backendMsg || '').toLowerCase();
+        if (lowered.includes('roomtype') && lowered.includes('not') && lowered.includes('found')) {
+          backendMsg = 'El tipo de habitación no existe (verifica que se guardó correctamente).';
+        } else if (lowered.includes('already exists')) {
+          backendMsg = 'Ese número de habitación ya existe en este hotel.';
+        }
+        throw new Error(backendMsg || 'Error posting room');
+      }
+      // Respuesta exitosa: intentar parsear JSON, fallback a objeto mínimo
+      const successRaw = await response.text();
+      let successPayload: any = null;
+      try {
+        successPayload = JSON.parse(successRaw);
+      } catch {
+        successPayload = { roomNumber: trimmed, raw: successRaw, nonJson: true };
+      }
+      successes.push(successPayload);
+    } catch (err: any) {
+      console.error(`[postRoom] Error creando room ${room}:`, err?.message || err);
+      failures.push({ roomNumber: room, error: err?.message || 'Error' });
     }
   }
+  return { successes, failures };
 };
 
 export const getHotelById = async (id: string) => {
   try {
     const response = await fetch(
-      `https://rutaviajera-backend-production.up.railway.app/hotels/${id}`,
+      `${process.env.NEXT_PUBLIC_API_URL}/hotels/${id}`,
       {
         cache: "no-cache",
       }
@@ -110,7 +174,7 @@ export const fetchHotelsByAdminId = async (id: string) => {
   }
 
   const response = await fetch(
-    `https://rutaviajera-backend-production.up.railway.app/hotels/hotelAdmin/${id}`,
+    `${process.env.NEXT_PUBLIC_API_URL}/hotels/hotelAdmin/${id}`,
     {
       method: "GET",
       headers: {
@@ -118,7 +182,7 @@ export const fetchHotelsByAdminId = async (id: string) => {
       },
     }
   );
-  console.log(response);
+  // Eliminado console.log redundante que generaba ruido en consola.
 
   if (!response.ok) {
     throw new Error(
@@ -135,17 +199,25 @@ export const fetchHotelsByAdminId = async (id: string) => {
 
 export const getHotels = async () => {
   try {
-    const response = await fetch(
-      "https://rutaviajera-backend-production.up.railway.app/hotels"
-    );
+    const apiUrl = `${process.env.NEXT_PUBLIC_API_URL}/hotels`;
+    console.log("Environment variable NEXT_PUBLIC_API_URL:", process.env.NEXT_PUBLIC_API_URL);
+    console.log("Fetching hotels from URL:", apiUrl);
+    
+    const response = await fetch(apiUrl);
+    console.log("Response status:", response.status);
+    console.log("Response ok:", response.ok);
+    
     if (response.ok) {
       const data = await response.json();
+      console.log("Hotels data received:", data);
       return data;
     } else {
+      const errorText = await response.text();
+      console.error("Error response text:", errorText);
       throw new Error("Error en la solicitud: " + response.status);
     }
   } catch (error) {
-    console.error(error);
+    console.error("Fetch error:", error);
     throw error;
   }
 };
@@ -153,7 +225,7 @@ export const getHotels = async () => {
 export const getHotelsBySearch = async (searchQuery: string) => {
   try {
     const response = await fetch(
-      `https://rutaviajera-backend-production.up.railway.app/hotels/search?search=${searchQuery}`
+      `${process.env.NEXT_PUBLIC_API_URL}/hotels/search?search=${searchQuery}`
     );
     if (response.ok) {
       const data = await response.json();
@@ -192,7 +264,7 @@ export const postBooking = async (booking: {
   const token = typeof window !== "undefined" && localStorage.getItem("token");
   try {
     const response = await fetch(
-      "https://rutaviajera-backend-production.up.railway.app/bookings",
+      `${process.env.NEXT_PUBLIC_API_URL}/bookings`,
       {
         method: "POST",
         headers: {
@@ -206,17 +278,26 @@ export const postBooking = async (booking: {
       const data = await response.json();
       return data;
     } else {
-      throw new Error("Error en la solicitud: " + response.status);
+      let message = `Error en la solicitud: ${response.status}`;
+      try {
+        const errData = await response.json();
+        // NestJS validation or custom errors often return {message: string | string[]}
+        if (errData?.message) {
+          if (Array.isArray(errData.message)) message += ' - ' + errData.message.join(', ');
+          else message += ' - ' + errData.message;
+        }
+      } catch {}
+      return { error: true, status: response.status, message };
     }
   } catch (error) {
     console.error(error);
-    throw error;
+    return { error: true, status: 0, message: (error as Error).message };
   }
 };
 
 // export const postBooking = async (booking: ICreateBooking) => {
 //   const token = typeof window !== "undefined" && localStorage.getItem("token");
-//   const response = await fetch("https://rutaviajera-backend-production.up.railway.app/bookings", {
+//   const response = await fetch("${process.env.NEXT_PUBLIC_API_URL}/bookings", {
 //     method: "POST",
 //     headers: {
 //       "Content-Type": "application/json",
@@ -235,7 +316,7 @@ export const getRoomTypesByHotelId = async (
     const token = localStorage.getItem("token");
 
     const response = await fetch(
-      `https://rutaviajera-backend-production.up.railway.app/roomstype/hotel/${hotelId}`,
+      `${process.env.NEXT_PUBLIC_API_URL}/roomstype/hotel/${hotelId}`,
       {
         headers: {
           Authorization: `Bearer ${token}`,
@@ -272,7 +353,7 @@ export const updateHotel = async (hotelId: string, hotelData: any) => {
   const token = localStorage.getItem("token");
 
   const response = await fetch(
-    `https://rutaviajera-backend-production.up.railway.app/hotels/${hotelId}`,
+    `${process.env.NEXT_PUBLIC_API_URL}/hotels/${hotelId}`,
     {
       method: "PUT",
       headers: {
@@ -299,7 +380,7 @@ export const deleteHotel = async (hotelId: string) => {
   }
 
   const response = await fetch(
-    `https://rutaviajera-backend-production.up.railway.app/hotels/${hotelId}`,
+    `${process.env.NEXT_PUBLIC_API_URL}/hotels/${hotelId}`,
     {
       method: "DELETE",
       headers: {
@@ -326,4 +407,15 @@ export const deleteHotel = async (hotelId: string) => {
     console.error("Error parseando JSON:", error, text);
     throw new Error("Respuesta del servidor no es JSON válido.");
   }
+};
+
+export const fetchBookingById = async (bookingId: string) => {
+  const token = typeof window !== "undefined" && localStorage.getItem("token");
+  if (!token) throw new Error('Token no encontrado');
+  const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/bookings/${bookingId}` , {
+    method: 'GET',
+    headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` }
+  });
+  if (!response.ok) throw new Error(`Error obteniendo booking: ${response.status}`);
+  return await response.json();
 };

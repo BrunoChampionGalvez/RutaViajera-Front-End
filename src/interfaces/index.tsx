@@ -73,6 +73,8 @@ export interface IUserContextType {
   setIsLogged: (isLogged: boolean) => void;
   isAdmin: boolean;
   setIsAdmin: (isAdmin: boolean) => void;
+  isSuperAdmin: boolean;
+  setIsSuperAdmin: (isSuperAdmin: boolean) => void;
   login: (credentials: ILogin) => Promise<boolean>;
   getCustomerDetails: (customerId: string | undefined) => void;
   getHotelierDetails: (hotelierId: string | undefined) => void;
@@ -135,13 +137,13 @@ export interface ICreateNumberOfRoom {
   roomsTypeId: string | null;
 }
 export interface IRoomType {
-  id: string | number | undefined;
-  name: string | undefined;
-  capacity: number | undefined;
-  totalBathrooms: number | undefined;
-  totalBeds: number | undefined;
-  images: string[] | undefined;
-  price: number | undefined;
+  id: string;
+  name: string;
+  capacity: number;
+  totalBathrooms: number;
+  totalBeds: number;
+  images: string[];
+  price: number;
 }
 
 export interface IRoomTypeRegister {
@@ -224,6 +226,29 @@ export interface IRoomTypesIdsAndDates {
   roomTypeId: string;
   checkInDate: string;
   checkOutDate: string;
+  quantity?: number;
+}
+
+export interface ISelectedRoom {
+  roomTypeId: string;
+  roomTypeName: string;
+  quantity: number;
+  price: number;
+  checkInDate: string;
+  checkOutDate: string;
+  totalPrice: number;
+  nights: number;
+}
+
+export interface IBookingConfirmation {
+  id: string;
+  customerId: string;
+  hotelId: string;
+  hotelName: string;
+  selectedRooms: ISelectedRoom[];
+  totalAmount: number;
+  bookingDate: string;
+  status: string;
 }
 
 export interface IHotelImage {
@@ -256,6 +281,8 @@ export interface IHotelContextType {
   setHotels: React.Dispatch<React.SetStateAction<IHotel[] | null>>;
   roomTypeIdBeingCreated: string | null;
   setRoomTypeIdBeingCreated: React.Dispatch<React.SetStateAction<string | null>>;
+  isSuperAdmin?: boolean; // añadido para distinguir super admin
+  setIsSuperAdmin?: (isSuperAdmin: boolean) => void;
   addHotel: (hotel: IHotelRegisterPost) => Promise<boolean>;
   fetchHotels: () => Promise<IHotelDetail[]>;
   fetchBookingsByHotel: (hotelId: string) => Promise<IBooking[]>;
@@ -346,6 +373,15 @@ export interface IAvailabilities {
   endDate: string;
   isAvailable: boolean;
   isDeleted: boolean;
+  room?: {
+    id: string;
+    roomNumber?: string;
+    roomtype?: {
+      id: string;
+      name: string;
+      price: number;
+    }
+  }
 }
 
 export interface IBookingForm {
@@ -369,7 +405,7 @@ export interface IHotelDetail {
   reviews: IReviewResponse[];
   images: string[];
   isDeleted: boolean;
-  roomstype: [];
+  roomstype: IRoomType[];
 }
 
 export interface IHotelLocation {

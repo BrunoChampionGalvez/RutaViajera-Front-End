@@ -5,11 +5,15 @@
 @import "flowbite/dist/flowbite.css";
 
 .btn-primary {
-  @apply bg-gradient-to-r from-[#ff9f2e] to-[#f8263a] font-medium text-white rounded-lg p-2 px-2 ml-3 hover:from-[#e68a26] hover:to-[#d71f32] focus:scale-95;
+  @apply bg-gradient-to-r from-[#ff9f2e] to-[#f8263a] font-medium text-white rounded-lg p-2 px-4 ml-3 hover:from-[#e68a26] hover:to-[#d71f32] focus:scale-95;
 }
 
 .btn-secondary {
   @apply w-full flex justify-center py-2 px-4 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-[#f8263a] hover:bg-[#d71f32] focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-[#f8263a];
+}
+
+.text-secondary {
+  @apply text-[#f8263a];
 }
 
 .title {

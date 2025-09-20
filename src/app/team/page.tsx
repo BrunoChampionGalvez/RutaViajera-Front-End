@@ -34,7 +34,7 @@ function Team() {
           },
           {
             name: "Bruno Champion",
-            role: "Back-end Developer",
+            role: "Full-Stack Developer",
             linkedin:
               "https://www.linkedin.com/in/bruno-champion-g%C3%A1lvez-427aba188/",
           },

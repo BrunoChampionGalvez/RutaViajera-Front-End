@@ -16,7 +16,12 @@ import { CiSaveUp2 } from "react-icons/ci";
 import { IconContext } from "react-icons";
 import { MdDelete } from "react-icons/md";
 
-export default function TypesRegister({ hotelId }: RoomTypesRegisterProps) {
+interface ExtendedRoomTypesRegisterProps extends RoomTypesRegisterProps {
+  onRoomTypesSaved?: (roomTypes: Partial<IRoomTypeRegister>[]) => void;
+  suppressStandaloneNav?: boolean; // si true no muestra elementos que dependen de flujo individual
+}
+
+export default function TypesRegister({ hotelId, onRoomTypesSaved, suppressStandaloneNav = false }: ExtendedRoomTypesRegisterProps) {
   const { isAdmin, user } = useContext(UserContext);
   const { setRoomTypeIdBeingCreated } = useContext(HotelContext)
   const router = useRouter();
@@ -122,16 +127,25 @@ export default function TypesRegister({ hotelId }: RoomTypesRegisterProps) {
           const objectToSend = {
             arraysOfBuffers: roomType.images
           }
-          const responsePostImages = await fetch('/api/upload-hotel-images', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify(objectToSend)
-          })
+          let uploadedUrls: string[] = [];
+          try {
+            const responsePostImages = await fetch('/api/upload-hotel-images', {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify(objectToSend)
+            });
+            if (responsePostImages.ok) {
+              uploadedUrls = await responsePostImages.json();
+            } else {
+              console.warn('Fallo subida imágenes roomType, se continúa sin imágenes');
+            }
+          } catch (e) {
+            console.warn('Error subiendo imágenes roomType (continuando sin imágenes):', e);
+          }
 
-          let uploadedUrls: string[] = await responsePostImages.json()
-
+          const { id: _tempId, ...roomTypeWithoutNumericId } = roomType as any;
           const formData = {
-            ...roomType,
+            ...roomTypeWithoutNumericId,
             images: uploadedUrls,
             hotelId: hotelId
           };
@@ -158,6 +172,12 @@ export default function TypesRegister({ hotelId }: RoomTypesRegisterProps) {
           showConfirmButton: true,
           timer: 4000,
         });
+        if (arrayOfSavedRoomTypes.length > 0) {
+          // asigna primer id guardado para uso en creación de habitaciones
+          const first = arrayOfSavedRoomTypes[0] as any;
+            if (first?.id) setRoomTypeIdBeingCreated(String(first.id));
+        }
+        if (onRoomTypesSaved) onRoomTypesSaved(arrayOfSavedRoomTypes);
       } else {
         Swal.fire({
           icon: "error",

@@ -143,6 +143,12 @@ export const SuperAdminProvider = ({
   const fetchBookings = useCallback(async (): Promise<IBookingOfSuperAdmin[]> => {
     try {
       const data = await getAllBookings();
+      if (!Array.isArray(data)) {
+        console.warn('[SuperAdminContext] getAllBookings no retornó un array. Valor recibido:', data);
+        setBookings([]);
+        return [];
+      }
+      console.log('[SuperAdminContext] Bookings recibidos:', { length: data.length, sample: data[0] });
       setBookings(data);
       localStorage.setItem("bookings", JSON.stringify(data));
       return data;
@@ -156,7 +162,7 @@ export const SuperAdminProvider = ({
     async (searchQuery: string): Promise<ICustomerDetails[]> => {
       try {
         const response = await fetch(
-          `https://rutaviajera-backend-production.up.railway.app/customers/search?search=${searchQuery}`
+          `${process.env.NEXT_PUBLIC_API_URL}/customers/search?search=${searchQuery}`
         );
         if (!response.ok) {
           throw new Error(`HTTP error status: ${response.status}`);
@@ -373,7 +379,7 @@ export const SuperAdminProvider = ({
     async (searchQuery: string): Promise<IHotelAdminDetails[]> => {
       try {
         const response = await fetch(
-          `https://rutaviajera-backend-production.up.railway.app/hotel-admins/search?search=${searchQuery}`
+          `${process.env.NEXT_PUBLIC_API_URL}/hotel-admins/search?search=${searchQuery}`
         );
         if (!response.ok) {
           throw new Error(`HTTP error status: ${response.status}`);
@@ -429,7 +435,7 @@ export const SuperAdminProvider = ({
     async (hotelAdminId: string, searchQuery: string): Promise<IHotelOfSuperAdmin[]> => {
       try {
         const response = await fetch(
-          `https://rutaviajera-backend-production.up.railway.app/hotels/search/hotelAdmin?hotelAdminId=${hotelAdminId}&search=${searchQuery}`
+          `${process.env.NEXT_PUBLIC_API_URL}/hotels/search/hotelAdmin?hotelAdminId=${hotelAdminId}&search=${searchQuery}`
         );
         console.log(response);
         
@@ -454,7 +460,7 @@ export const SuperAdminProvider = ({
     async (hotelId: string, searchQuery: string): Promise<IReviewOfSuperAdmin[]> => {
       try {
         const response = await fetch(
-          `https://rutaviajera-backend-production.up.railway.app/reviews/search?search=${searchQuery}&hotelId=${hotelId}`
+          `${process.env.NEXT_PUBLIC_API_URL}/reviews/search?search=${searchQuery}&hotelId=${hotelId}`
         );
         console.log(response);
 
@@ -509,7 +515,7 @@ export const SuperAdminProvider = ({
     async (hotelId: string, searchQuery: string): Promise<IRoomTypeOfSuperAdmin[]> => {
       try {
         const response = await fetch(
-          `https://rutaviajera-backend-production.up.railway.app/roomstype/search?search=${searchQuery}&hotelId=${hotelId}`
+          `${process.env.NEXT_PUBLIC_API_URL}/roomstype/search?search=${searchQuery}&hotelId=${hotelId}`
         );
         console.log(response);
 
@@ -574,7 +580,7 @@ export const SuperAdminProvider = ({
     async (roomTypeId: string, searchQuery: string): Promise<IRoomOfSuperAdmin[]> => {
       try {
         const response = await fetch(
-          `https://rutaviajera-backend-production.up.railway.app/rooms/search?search=${searchQuery}&roomTypeId=${roomTypeId}`
+          `${process.env.NEXT_PUBLIC_API_URL}/rooms/search?search=${searchQuery}&roomTypeId=${roomTypeId}`
         );
         console.log(response);
 

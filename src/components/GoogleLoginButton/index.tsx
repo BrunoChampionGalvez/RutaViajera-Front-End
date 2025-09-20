@@ -1,11 +1,10 @@
 "use client";
 
-import { signIn } from "next-auth/react";
 import Image from "next/image";
 
 const GoogleLoginButton = () => {
-  const handleSignIn = async () => {
-    await signIn("google", { callbackUrl: "/home" });
+  const handleSignIn = () => {
+    window.location.href = 'http://localhost:3000/auth/api/google/login';
   };
 
   return (

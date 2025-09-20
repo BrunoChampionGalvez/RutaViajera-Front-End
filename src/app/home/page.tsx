@@ -1,9 +1,10 @@
 "use client";
 
-import { useState } from "react";
+import { useState, Suspense } from "react";
 import ProductsList from "@/components/ProductsList";
 import SearchBar from "@/components/SearchBar";
 import HotelsFilter from "@/components/HotelsFilter";
+import OAuthHandler from "@/components/OAuthHandler";
 import { QueryParams } from "@/interfaces";
 
 function Home() {
@@ -46,6 +47,9 @@ function Home() {
 
   return (
     <div>
+      <Suspense fallback={<div>Loading...</div>}>
+        <OAuthHandler />
+      </Suspense>
       <SearchBar placeholder={placeholder} onSearch={handleSearch} />
       <ProductsList queryParams={queryParams} searchQuery={searchQuery} />
       <HotelsFilter onFilter={buildQueryString} />

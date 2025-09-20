@@ -34,7 +34,7 @@ export default function Landing() {
               Comienza Aquí
             </h2>
             <Link href={"/home"}>
-              <button className="btn-primary text-xl sm:text-2xl uppercase">
+              <button className="btn-primary text-xl sm:text-xl px-6 py-3">
                 Comenzar
               </button>
             </Link>

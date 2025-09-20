@@ -9,8 +9,10 @@ const GoogleCustomerRegisterButton = () => {
   const [error, setError] = useState<string | null>(null);
 
   const handleGoogleRegister = () => {
+    console.log('API_URL:', process.env.NEXT_PUBLIC_API_URL);
+    
     window.location.href =
-      "https://rutaviajera-backend-production.up.railway.app/auth/api/google/register/customer";
+      `${process.env.NEXT_PUBLIC_API_URL}/auth/api/google/register/customer`;
   };
 
   useEffect(() => {

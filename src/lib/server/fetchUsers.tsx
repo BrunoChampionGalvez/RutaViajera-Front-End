@@ -1,6 +1,11 @@
-const getToken = () => {
-  if (typeof window !== "undefined") {
-    return localStorage.getItem("token");
+// Unified token accessor (safe for SSR environments)
+const getAuthToken = () => {
+  try {
+    if (typeof window !== 'undefined') {
+      return localStorage.getItem('token');
+    }
+  } catch (e) {
+    console.warn('Unable to access token from localStorage', e);
   }
   return null;
 };
@@ -16,24 +21,34 @@ import {
 } from "@/interfaces";
 
 export const postCustomerRegister = async (user: Omit<IUser, "id">) => {
+  // Normalize payload: backend expects birthDate string <= 10 chars (e.g. YYYY-MM-DD)
+  const payload = {
+    ...user,
+    birthDate: user.birthDate ? user.birthDate.substring(0, 10) : '',
+  };
   try {
     const response = await fetch(
-      "https://rutaviajera-backend-production.up.railway.app/auth/cxSignUp",
+      `${process.env.NEXT_PUBLIC_API_URL}/auth/cxSignUp`,
       {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(user),
+        body: JSON.stringify(payload),
       }
     );
-    
     if (response.ok) {
       const data = await response.json();
       return data;
     } else {
-      throw new Error("Error en la solicitud: " + response.status);
+      let details: any = null;
+      try { details = await response.json(); } catch {}
+      const backendMsg = details?.message || details?.error || 'Solicitud inválida';
+      const fullMessage = Array.isArray(backendMsg) ? backendMsg.join('; ') : backendMsg;
+      const err = new Error(`Registro fallido (${response.status}): ${fullMessage}`);
+      (err as any).details = details;
+      throw err;
     }
   } catch (error) {
-    console.error("Error en la operación:", error);
+    console.error("Error en la operación de registro:", error);
     throw error;
   }
 };
@@ -41,7 +56,7 @@ export const postCustomerRegister = async (user: Omit<IUser, "id">) => {
 export const postAdminRegister = async (user: Omit<IUser, "id">) => {
   try {
     const response = await fetch(
-      "https://rutaviajera-backend-production.up.railway.app/auth/adminSignUp",
+      `${process.env.NEXT_PUBLIC_API_URL}/auth/adminSignUp`,
       {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -63,7 +78,7 @@ export const postAdminRegister = async (user: Omit<IUser, "id">) => {
 export const postLogin = async (credentials: ILogin) => {
   try {
     const response = await fetch(
-      "https://rutaviajera-backend-production.up.railway.app/auth/SignIn",
+      `${process.env.NEXT_PUBLIC_API_URL}/auth/SignIn`,
       {
         method: "POST",
         headers: {
@@ -87,7 +102,7 @@ export const postLogin = async (credentials: ILogin) => {
 export const sendEmail = async (credentials: Partial<ILogin>) => {
   try {
     const response = await fetch(
-      "https://rutaviajera-backend-production.up.railway.app/auth/password-recovery",
+      `${process.env.NEXT_PUBLIC_API_URL}/auth/password-recovery`,
       {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -106,7 +121,7 @@ export const tokenVerified = async (
 ) => {
   try {
     const response = await fetch(
-      "https://rutaviajera-backend-production.up.railway.app/auth/api/reset-password",
+      `${process.env.NEXT_PUBLIC_API_URL}/auth/api/reset-password`,
       {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -121,11 +136,11 @@ export const tokenVerified = async (
 };
 
 export const postReview = async (review: ICreateReview) => {
-  const token = getToken();
+  const token = getAuthToken();
   console.log("Token:", token);
   try {
     const response = await fetch(
-      "https://rutaviajera-backend-production.up.railway.app/reviews",
+      `${process.env.NEXT_PUBLIC_API_URL}/reviews`,
       {
         method: "POST",
         headers: {
@@ -153,7 +168,7 @@ export const postReview = async (review: ICreateReview) => {
 export const getAllReviews = async () => {
   try {
     const response = await fetch(
-      "https://rutaviajera-backend-production.up.railway.app/reviews"
+      `${process.env.NEXT_PUBLIC_API_URL}/reviews`
     );
     if (response.ok) {
       const data = await response.json();
@@ -181,7 +196,7 @@ export const putUpdateProfile = async (
     
     
     const response = await fetch(
-      `https://rutaviajera-backend-production.up.railway.app/customers/${userId}`,
+      `${process.env.NEXT_PUBLIC_API_URL}/customers/${userId}`,
       {
         method: "PUT",
         headers: {
@@ -214,7 +229,7 @@ export const putUpdateProfileHotelier = async (
     const token =
       typeof window !== "undefined" && localStorage.getItem("token");
     const response = await fetch(
-      `https://rutaviajera-backend-production.up.railway.app/hotel-admins/${userId}`,
+      `${process.env.NEXT_PUBLIC_API_URL}/hotel-admins/${userId}`,
       {
         method: "PUT",
         headers: {
@@ -236,14 +251,14 @@ export const putUpdateProfileHotelier = async (
 };
 
 export const fetchCustomerBookings = async (customerId: string) => {
-  const token = localStorage.getItem("token");
+  const token = getAuthToken();
 
   if (!token) {
     throw new Error("No se encontró el token de autenticación.");
   }
 
   const response = await fetch(
-    `https://rutaviajera-backend-production.up.railway.app/bookings/customer/${customerId}`,
+    `${process.env.NEXT_PUBLIC_API_URL}/bookings/customer/${customerId}`,
     {
       method: "GET",
       headers: {
@@ -254,9 +269,25 @@ export const fetchCustomerBookings = async (customerId: string) => {
   );
 
   if (!response.ok) {
-    throw new Error(
-      `Error en la solicitud: ${response.status} - ${response.statusText}`
-    );
+    // Attempt to interpret known backend "no bookings" message
+    try {
+      const errData = await response.json();
+      if (
+        response.status === 400 &&
+        (errData?.message === 'No se encontró ningún booking.' ||
+          /No se encontr[oó] ning[uú]n booking/i.test(errData?.message))
+      ) {
+        return [] as any[]; // treat as empty list instead of error
+      }
+      throw new Error(
+        `Error en la solicitud: ${response.status} - ${response.statusText} - ${errData?.message || ''}`
+      );
+    } catch (e) {
+      if (e instanceof Error) throw e;
+      throw new Error(
+        `Error en la solicitud: ${response.status} - ${response.statusText}`
+      );
+    }
   }
 
   const data = await response.json();
@@ -264,12 +295,10 @@ export const fetchCustomerBookings = async (customerId: string) => {
 };
 
 export const cancelBooking = async (bookingId: string) => {
-  const token = localStorage.getItem("token");
-  if (!token) {
-    throw new Error("No se encontró el token de autenticación.");
-  }
+  const token = getAuthToken();
+  if (!token) throw new Error('Authentication token missing');
   const response = await fetch(
-    `https://rutaviajera-backend-production.up.railway.app/bookings/cancel/${bookingId}`,
+    `${process.env.NEXT_PUBLIC_API_URL}/bookings/cancel/${bookingId}`,
     {
       method: "PUT",
       headers: {
@@ -279,55 +308,58 @@ export const cancelBooking = async (bookingId: string) => {
     }
   );
   const text = await response.text();
-  if (
-    response.status === 201 &&
-    text.includes("Booking cancelado exitosamente")
-  ) {
-    return true;
-  }
+  if (response.ok && /Booking cancelado exitosamente/i.test(text)) return true;
   throw new Error(
     `Error en la solicitud: ${response.status} - ${response.statusText}: ${text}`
   );
 };
 
 export const fetchCustomerDetails = async (customerId: string) => {
-  const token = localStorage.getItem("token");
+  const token = getAuthToken();
   console.log('1 fetchCustomerDetails');
   
   const response = await fetch(
-    `https://rutaviajera-backend-production.up.railway.app/customers/${customerId}`,
+    `${process.env.NEXT_PUBLIC_API_URL}/customers/${customerId}`,
     {
       method: "GET",
       headers: {
-        Authorization: `Bearer: ${token}`,
+        // Removed colon after Bearer; correct scheme is 'Bearer <token>'
+        Authorization: `Bearer ${token}`,
       }
     }
   );
   console.log('2 fetchCustomerDetails');
-
-
-  if (!response.ok) throw new Error('Error in fetching the customer details.')
-  return response.json()
+  if (!response.ok) {
+    let details: any = null;
+    try { details = await response.json(); } catch {}
+    const message = details?.message || 'Error fetching customer details';
+    throw new Error(`Customer fetch failed (${response.status}): ${message}`);
+  }
+  return response.json();
 }
 
 export const fetchHotelierDetails = async (hotelierId: string) => {
-  const token = localStorage.getItem("token");
+  const token = getAuthToken();
 
   console.log('1 fetchHotelierDetails');
 
   const response = await fetch(
-    `https://rutaviajera-backend-production.up.railway.app/hotel-admins/${hotelierId}`,
+    `${process.env.NEXT_PUBLIC_API_URL}/hotel-admins/${hotelierId}`,
     {
       method: "GET",
       headers: {
-        Authorization: `Bearer: ${token}`,
+        // Removed colon after Bearer; correct scheme is 'Bearer <token>'
+        Authorization: `Bearer ${token}`,
       }
     }
   );
 
   console.log('2 fetchHotelierDetails');
-
-  if (!response.ok) throw new Error('Error in fetching the hotel admin details.')
-  const json = await response.json()
-  return json
+  if (!response.ok) {
+    let details: any = null;
+    try { details = await response.json(); } catch {}
+    const message = details?.message || 'Error fetching hotel admin details';
+    throw new Error(`Hotelier fetch failed (${response.status}): ${message}`);
+  }
+  return response.json();
 }
