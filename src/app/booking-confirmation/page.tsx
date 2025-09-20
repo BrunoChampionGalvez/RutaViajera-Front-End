@@ -1,6 +1,10 @@
 "use client";
 
-import React, { useEffect, useState } from "react";
+// Página depende de localStorage y query string -> se marca como dinámica para evitar prerender.
+export const dynamic = 'force-dynamic'; // eliminar si se configura a nivel de rutas
+// Nota: no exportamos revalidate aquí porque es un componente cliente; causar build error en algunos entornos.
+
+import React, { useEffect, useState, Suspense } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { ISelectedRoom } from "@/interfaces";
 import Image from "next/image";
@@ -15,7 +19,7 @@ interface BookingConfirmationData {
   checkOutDate: string;
 }
 
-const BookingConfirmationPage: React.FC = () => {
+const BookingConfirmationInner: React.FC = () => {
   const router = useRouter();
   const searchParams = useSearchParams();
   const [confirmationData, setConfirmationData] = useState<BookingConfirmationData | null>(null);
@@ -361,4 +365,11 @@ const BookingConfirmationPage: React.FC = () => {
   );
 };
 
-export default BookingConfirmationPage;
+// Wrapper con Suspense para uso de useSearchParams (CSR bailout)
+export default function BookingConfirmationPage() {
+  return (
+    <Suspense fallback={<div className="min-h-screen flex items-center justify-center"><div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-500"></div></div>}>
+      <BookingConfirmationInner />
+    </Suspense>
+  );
+}
