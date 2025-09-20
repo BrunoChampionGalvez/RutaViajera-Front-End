@@ -4,7 +4,7 @@ import Image from "next/image";
 
 const GoogleLoginButton = () => {
   const handleSignIn = () => {
-    window.location.href = 'http://localhost:3000/auth/api/google/login';
+    window.location.href = `${process.env.NEXT_PUBLIC_API_URL}/auth/api/google/login`;
   };
 
   return (
