@@ -155,9 +155,16 @@ export const postReview = async (review: ICreateReview) => {
       const data = await response.text();
       return data;
     } else {
-      const errorData = await response.json();
-      console.error("Detalles del error:", errorData);
-      throw new Error("Error al enviar la reseña.");
+      let backendDetails: any = null;
+      try { backendDetails = await response.json(); } catch {}
+      const backendMsg = backendDetails?.message || backendDetails?.error || `HTTP ${response.status}`;
+      console.error("Detalles del error:", backendDetails);
+      const err = new Error(
+        Array.isArray(backendMsg) ? backendMsg.join('; ') : backendMsg
+      );
+      (err as any).status = response.status;
+      (err as any).details = backendDetails;
+      throw err;
     }
   } catch (error) {
     console.error("Error en la operación:", error);

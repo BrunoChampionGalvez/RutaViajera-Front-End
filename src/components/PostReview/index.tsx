@@ -6,11 +6,13 @@ import { postReview } from "@/lib/server/fetchUsers";
 import { ErrorMessage, Field, Form, Formik } from "formik";
 import { useParams } from "next/navigation";
 import { useContext, useState } from "react";
-import { FaStar } from "react-icons/fa";
+import { FaStar, FaCheckCircle } from "react-icons/fa";
 
 export function PostReview() {
   const [rating, setRating] = useState(0);
   const [hover, setHover] = useState(0);
+  const [status, setStatus] = useState<"idle" | "submitting" | "success" | "error">("idle");
+  const [errorMsg, setErrorMsg] = useState<string | null>(null);
   const { id } = useParams();
   const { user, isAdmin } = useContext(UserContext);
 
@@ -21,13 +23,17 @@ export function PostReview() {
 
   const handleSubmit = async (
     values: IPostReview,
-    { setSubmitting }: { setSubmitting: (isSubmitting: boolean) => void }
+    { setSubmitting, resetForm }: { setSubmitting: (isSubmitting: boolean) => void; resetForm: () => void }
   ) => {
     if (!user?.id) {
-      alert("Inicia sesión para continuar");
+      setErrorMsg("Debes iniciar sesión para enviar una reseña.");
+      setStatus("error");
       setSubmitting(false);
       return;
     }
+
+    setStatus("submitting");
+    setErrorMsg(null);
 
     const review: ICreateReview = {
       comment: values.comment,
@@ -39,15 +45,29 @@ export function PostReview() {
     try {
       const data = await postReview(review);
       console.log("Reseña enviada: ", data);
-      alert("¡Gracias por tus comentarios!");
-    } catch (error) {
+      setStatus("success");
+      // Optionally reset form & rating so user sees a clean state
+      resetForm();
+      setRating(0);
+    } catch (error: any) {
       console.error("Error", error);
+      // Attempt to extract backend message
+      const backendMsg: string | undefined = error?.message;
+      // Custom friendly mapping for known backend messages
+      let friendly = backendMsg;
+      if (/this customer is not available/i.test(backendMsg || '')) {
+        friendly = "Tu cuenta de cliente no fue encontrada en el servidor. Cierra sesión y vuelve a iniciar, o registra un nuevo perfil de usuario.";
+      } else if (/this hotel is not available/i.test(backendMsg || '')) {
+        friendly = "El hotel ya no está disponible para reseñar.";
+      }
+      setErrorMsg(friendly || "Ocurrió un error al enviar la reseña. Intenta nuevamente.");
+      setStatus("error");
     }
     setSubmitting(false);
   };
 
   return (
-    <div className="w-full m-2">
+    <div className="w-full">
       {!isAdmin && (
         <div className="">
           <h3 className="font-light">¿Cómo calificarías tu experiencia?</h3>
@@ -92,6 +112,7 @@ export function PostReview() {
                               setFieldValue("rating", currentRate);
                               setRating(currentRate);
                             }}
+                            disabled={status === "success"}
                           />
                           <FaStar
                             className="cursor-pointer"
@@ -103,6 +124,7 @@ export function PostReview() {
                             size={30}
                             onMouseEnter={() => setHover(currentRate)}
                             onMouseLeave={() => setHover(rating)}
+                            style={{ opacity: status === "success" ? 0.6 : 1 }}
                           />
                         </label>
                       );
@@ -122,6 +144,7 @@ export function PostReview() {
                     name="comment"
                     className="w-full p-2 border rounded-md"
                     rows={4}
+                    disabled={status === "success"}
                   />
                   <ErrorMessage
                     name="comment"
@@ -131,11 +154,27 @@ export function PostReview() {
                 </div>
                 <button
                   type="submit"
-                  className="btn-secondary"
-                  disabled={isSubmitting}
+                  className={`btn-secondary ${
+                    isSubmitting || status === "success" ? "opacity-60 cursor-not-allowed" : ""
+                  }`}
+                  disabled={isSubmitting || status === "success"}
                 >
-                  Enviar
+                  {status === "submitting"
+                    ? "Enviando..."
+                    : status === "success"
+                    ? "Enviado ✓"
+                    : "Enviar"}
                 </button>
+                <div className="mt-2 min-h-6">
+                  {status === "success" && (
+                    <div className="text-green-600 flex items-center gap-2 text-sm">
+                      <FaCheckCircle /> ¡Gracias! Tu reseña fue enviada.
+                    </div>
+                  )}
+                  {status === "error" && (
+                    <div className="text-red-500 text-sm whitespace-pre-line">{errorMsg}</div>
+                  )}
+                </div>
               </Form>
             )}
           </Formik>

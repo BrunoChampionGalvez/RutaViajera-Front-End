@@ -9,7 +9,8 @@ import "swiper/css";
 import "swiper/css/pagination";
 import "swiper/css/free-mode";
 import { FreeMode, Pagination } from "swiper/modules";
-import EditHotelModal from "../EditHotelModal";
+// import EditHotelModal from "../EditHotelModal"; // replaced by HotelFullEditor
+import HotelFullEditor from "../HotelFullEditor";
 import { IAdminHotel } from "@/interfaces";
 import { deleteHotel, updateHotel } from "@/lib/server/fetchHotels";
 
@@ -66,12 +67,13 @@ function MyHotels() {
 
   return (
     <div className="flex flex-col h-full w-full">
-      {isModalOpen && (
-        <EditHotelModal
+      {isModalOpen && selectedHotel && (
+        <HotelFullEditor
           hotel={selectedHotel}
           onClose={handleCloseModal}
-          onSave={handleSaveChanges}
-          onDelete={handleDeleteHotel}
+          onUpdated={() => getHotelsByAdmin(user?.id || "")}
+          onDeleted={() => getHotelsByAdmin(user?.id || "")}
+          refreshHotels={() => getHotelsByAdmin(user?.id || "")}
         />
       )}
       <div className="flex justify-between items-center mx-4 py-4 bg-white/90 backdrop-blur supports-[backdrop-filter]:bg-white/70 sticky top-0 z-20 border-b">

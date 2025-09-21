@@ -32,7 +32,7 @@ function Navbar() {
               href="/home"
               className="p-4 border-b-2 border-red-500 border-opacity-0 hover:border-opacity-100 hover:text-red-500 duration-200 cursor-pointer active"
             >
-              Inicio
+              Reservas
             </Link>
             <Link
               href="/services"
@@ -88,7 +88,7 @@ function Navbar() {
                 href="/home"
                 className="p-4 border-b-2 border-red-500 border-opacity-0 hover:border-opacity-100 hover:text-red-500 duration-200 cursor-pointer active"
               >
-                Inicio
+                Reservas
               </Link>
               <Link
                 href="/services"
@@ -151,7 +151,7 @@ function Navbar() {
               href="/home"
               className="p-4 border-b-2 border-red-500 border-opacity-0 hover:border-opacity-100 hover:text-red-500 duration-200 cursor-pointer active"
             >
-              Inicio
+              Reservas
             </Link>
             <Link
               href="/services"
@@ -200,7 +200,7 @@ function Navbar() {
                 href="/home"
                 className="p-4 border-b-2 border-red-500 border-opacity-0 hover:border-opacity-100 hover:text-red-500 duration-200 cursor-pointer active"
               >
-                Inicio
+                Reservas
               </Link>
               <Link
                 href="/services"

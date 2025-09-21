@@ -4,21 +4,44 @@ import { IEditProfileUser } from "@/interfaces";
 import { putUpdateProfile } from "@/lib/server/fetchUsers";
 import { Field, Form, Formik } from "formik";
 import { useRouter } from "next/navigation";
-import { useContext } from "react";
+import { useContext, useMemo } from "react";
 
 function FormEditProfileUser() {
   const {setUser, user} = useContext(UserContext)
   const router = useRouter()
 
-  const initialValues: IEditProfileUser = {
-    name: "",
-    lastName: "",
-    email: "",
-    country: "",
-    city: "",
-    address: "",
-    phone: "",
-  };
+  // Derive initial values from context user or localStorage fallback
+  const initialValues: IEditProfileUser = useMemo(() => {
+    const fromCtx = user || {} as any;
+    if (!fromCtx?.id && typeof window !== 'undefined') {
+      try {
+        const stored = localStorage.getItem('user');
+        if (stored) {
+          const parsed = JSON.parse(stored);
+          return {
+            name: parsed.name || '',
+            lastName: parsed.lastName || '',
+            email: parsed.email || '',
+            country: parsed.country || '',
+            city: parsed.city || '',
+            address: parsed.address || '',
+            phone: parsed.phone || '',
+          } as IEditProfileUser;
+        }
+      } catch (e) {
+        console.warn('Failed reading stored user for prefill', e);
+      }
+    }
+    return {
+      name: fromCtx.name || '',
+      lastName: (fromCtx as any).lastName || '',
+      email: fromCtx.email || '',
+      country: (fromCtx as any).country || '',
+      city: (fromCtx as any).city || '',
+      address: (fromCtx as any).address || '',
+      phone: (fromCtx as any).phone || '',
+    } as IEditProfileUser;
+  }, [user]);
 
   const handleSubmit = async (values: IEditProfileUser, {setSubmitting}: {setSubmitting: (isSubmitting: boolean) => void}) => {
     const storedUser = localStorage.getItem("user");
@@ -66,7 +89,7 @@ function FormEditProfileUser() {
               nuevamente.
             </p>
           </div>
-          <Formik initialValues={initialValues} onSubmit={handleSubmit}>
+          <Formik enableReinitialize initialValues={initialValues} onSubmit={handleSubmit}>
             {({ isSubmitting }) => (
               <Form>
                 <div className="formDiv mb-4">

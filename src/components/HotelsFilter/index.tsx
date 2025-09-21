@@ -1,84 +1,74 @@
 import React, { useState, ChangeEvent, useEffect } from "react";
-import { data } from "../../helpers/countriesAndCities";
 import { IHotelsFilterProps } from "@/interfaces";
 import { FaStar } from "react-icons/fa";
+import { useHotelLocations } from "@/hooks/useHotelLocations";
+import DualRangeSlider from "@/components/DualRangeSlider";
 
 function HotelsFilter({ onFilter }: IHotelsFilterProps) {
   const [selectedCountry, setSelectedCountry] = useState<string>("");
   const [selectedCity, setSelectedCity] = useState<string>("");
-  const [minPrice, setMinPrice] = useState<number | undefined>(0);
-  const [maxPrice, setMaxPrice] = useState<number | undefined>(0);
-  const [selectedRating, setSelectedRating] = useState<number | undefined>(0);
+  const [priceRange, setPriceRange] = useState<[number, number]>([0, 500]);
+  const [ratingRange, setRatingRange] = useState<[number, number]>([1, 5]);
+  
+  const { locations, loading: locationsLoading } = useHotelLocations();
 
+  // Emit params to parent
   useEffect(() => {
     onFilter({
-      rating: selectedRating,
-      country: selectedCountry,
-      city: selectedCity,
-      minPrice: minPrice || undefined,
-      maxPrice: maxPrice || undefined,
+      country: selectedCountry || undefined,
+      city: selectedCity || undefined,
+      minPrice: priceRange[0],
+      maxPrice: priceRange[1],
+      ratingMin: ratingRange[0],
+      ratingMax: ratingRange[1],
     });
-  }, [selectedRating, selectedCountry, selectedCity, minPrice, maxPrice]);
+  }, [selectedCountry, selectedCity, priceRange, ratingRange, onFilter]);
 
   const handleCountryChange = (event: ChangeEvent<HTMLSelectElement>) => {
     setSelectedCountry(event.target.value);
     setSelectedCity("");
   };
-
   const handleCityChange = (event: ChangeEvent<HTMLSelectElement>) => {
     setSelectedCity(event.target.value);
   };
 
-  const handleRatingChange = (rating: number) => {
-    setSelectedRating(rating || undefined);
-  };
-
-  const handleMinPriceChange = (e: ChangeEvent<HTMLInputElement>) => {
-    const newMinPrice = Number(e.target.value);
-    if (maxPrice === undefined || newMinPrice <= maxPrice) {
-      setMinPrice(newMinPrice || undefined);
-    }
-  };
-
-  const handleMaxPriceChange = (e: ChangeEvent<HTMLInputElement>) => {
-    const newMaxPrice = Number(e.target.value);
-    if (minPrice === undefined || newMaxPrice >= minPrice) {
-      setMaxPrice(newMaxPrice || undefined);
-    }
-  };
+  // All dual slider logic now handled by DualRangeSlider component
 
   return (
-    <div className="p-4 bg-gray-100">
-      <div className="mb-4">
-        <label className="block mb-2 text-gray-700 font-bold">
-          Selecciona un País
+    <aside className="w-full md:w-64 lg:w-72 xl:w-80 bg-red-500 p-6 md:sticky md:top-4 h-full shadow-sm space-y-6">
+      <h2 className="text-xl font-semibold text-white">Filtros</h2>
+      {/* Country */}
+      <div>
+        <label className="block mb-1 text-sm font-medium text-white">
+          País
         </label>
         <select
           value={selectedCountry}
           onChange={handleCountryChange}
-          className="border rounded-md p-2 mt-1 w-full max-w-[500px]"
+          className="w-full border rounded-md p-2 text-sm focus:ring-2 focus:ring-[#f83f3a] focus:outline-none"
+          disabled={locationsLoading}
         >
-          <option value="">Selecciona un País</option>
-          {Object.keys(data).map((country) => (
+          <option value="">{locationsLoading ? "Cargando..." : "Todos"}</option>
+          {Object.keys(locations).sort().map((country) => (
             <option key={country} value={country}>
               {country}
             </option>
           ))}
         </select>
       </div>
-
+      {/* City */}
       {selectedCountry && (
-        <div className="mb-4">
-          <label className="block mb-2 text-gray-700 font-bold">
-            Selecciona una Ciudad
+        <div>
+          <label className="block mb-1 text-sm font-medium text-gray-700">
+            Ciudad
           </label>
           <select
             value={selectedCity}
             onChange={handleCityChange}
-            className="border rounded-md p-2 mt-1 w-full max-w-[500px]"
+            className="w-full border rounded-md p-2 text-sm focus:ring-2 focus:ring-[#f83f3a] focus:outline-none"
           >
-            <option value="">Selecciona una Ciudad</option>
-            {data[selectedCountry].map((city) => (
+            <option value="">Todas</option>
+            {(locations[selectedCountry] || []).map((city: string) => (
               <option key={city} value={city}>
                 {city}
               </option>
@@ -86,54 +76,65 @@ function HotelsFilter({ onFilter }: IHotelsFilterProps) {
           </select>
         </div>
       )}
-
-      <div className="mb-4 max-w-[500px]">
-        <label className="block mb-2 text-gray-700 font-bold">Precio:</label>
-        <div className="flex items-center">
-          <input
-            type="range"
-            min="0"
-            max="500"
-            value={minPrice !== undefined ? minPrice : 0}
-            onChange={handleMinPriceChange}
-            className="mx-2 w-full"
-          />
-          <input
-            type="range"
-            min="0"
-            max="500"
-            value={maxPrice !== undefined ? maxPrice : 500}
-            onChange={handleMaxPriceChange}
-            className="mx-2 w-full"
-          />
-          <span className="ml-4 text-gray-700 font-medium">{`$${
-            minPrice !== undefined ? minPrice : 0
-          } - $${maxPrice !== undefined ? maxPrice : 500}`}</span>
+      {/* Price Range */}
+      <div>
+        <div className="flex items-center justify-between mb-2">
+          <span className="text-sm font-medium text-white">Precio</span>
+          <span className="text-xs font-semibold text-white">${priceRange[0]} - ${priceRange[1]}</span>
         </div>
+        <DualRangeSlider
+          min={0}
+          max={500}
+          value={priceRange}
+          onChange={setPriceRange}
+          ariaLabelMin="Precio mínimo"
+            ariaLabelMax="Precio máximo"
+          format={(n) => `$${n}`}
+          className="mb-2"
+          trackColor="bg-red-800"
+          emptyColor="#e5e7eb"
+        />
       </div>
-
-      <div className="mb-4">
-        <label className="block mb-2 text-gray-700 font-bold">
-          Calificación:
-        </label>
-        <div className="flex flex-wrap items-center">
-          {[1, 2, 3, 4, 5].map((rating) => (
-            <label key={rating} className="flex items-center mb-2 sm:mb-0">
-              <input
-                type="radio"
-                checked={selectedRating === rating}
-                onChange={() => handleRatingChange(rating)}
-                className="ml-2"
-              />
-              <div className="flex items-center ml-2">
-                <p className="mr-2">{rating}</p>
-                <FaStar style={{ color: "gold" }} />
-              </div>
-            </label>
+      {/* Rating Range */}
+      <div>
+        <div className="flex items-center justify-between mb-2">
+          <span className="text-sm font-medium text-white">Calificación</span>
+          <span className="text-xs font-semibold text-white">{ratingRange[0]} - {ratingRange[1]}</span>
+        </div>
+        <DualRangeSlider
+          min={1}
+          max={5}
+          step={1}
+          value={ratingRange}
+          onChange={setRatingRange}
+          ariaLabelMin="Calificación mínima"
+          ariaLabelMax="Calificación máxima"
+          className="mb-1"
+          trackColor="bg-yellow-300"
+          emptyColor="#e5e7eb"
+          format={(n) => `${n}`}
+        />
+        <div className="flex justify-between mt-1 text-sm text-gray-500">
+          {[1,2,3,4,5].map(n => (
+            <div key={n} className="flex justify-center gap-2 items-center">
+              <FaStar className={`text-[10px] ${n >= ratingRange[0] && n <= ratingRange[1] ? 'text-yellow-300' : 'text-gray-300'}`} />
+              <span className="text-red-900 text-md">{n}</span>
+            </div>
           ))}
         </div>
       </div>
-    </div>
+      <button
+        onClick={() => {
+          setSelectedCountry("");
+          setSelectedCity("");
+          setPriceRange([0,500]);
+          setRatingRange([1,5]);
+        }}
+        className="w-full text-sm font-medium bg-gray-100 hover:bg-gray-200 rounded-md py-2 transition-colors"
+      >
+        Limpiar filtros
+      </button>
+    </aside>
   );
 }
 

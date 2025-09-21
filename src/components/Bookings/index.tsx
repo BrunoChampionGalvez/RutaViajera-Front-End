@@ -5,6 +5,7 @@ import { IBooking } from "@/interfaces";
 import { cancelBooking, fetchCustomerBookings } from "@/lib/server/fetchUsers";
 import Link from "next/link";
 import { useContext, useEffect, useState, useCallback } from "react";
+import Swal from 'sweetalert2';
 import { useSearchParams } from "next/navigation";
 import HotelBookings from "../HotelBookings";
 
@@ -78,32 +79,44 @@ function Bookings() {
   }, [loading, isLogged, bookings.length, user?.bookings]);
 
   const handleCancelBooking = useCallback(async (bookingId: string) => {
-    const confirmCancel = window.confirm(
-      "¿Estás seguro de que deseas cancelar esta reserva?"
-    );
-    if (!confirmCancel) return;
+    const result = await Swal.fire({
+      title: '¿Cancelar reserva?',
+      text: 'Esta acción no se puede deshacer y podría aplicar políticas del hotel.',
+      icon: 'warning',
+      showCancelButton: true,
+      confirmButtonColor: '#d33', // darker gray
+      cancelButtonColor: '#888',  // lighter gray
+      confirmButtonText: 'Sí, cancelar',
+      cancelButtonText: 'No, mantener'
+    });
+    if (!result.isConfirmed) return;
 
     setCancelling(prev => new Set(prev).add(bookingId));
     try {
       const success = await cancelBooking(bookingId);
       if (success) {
-        // Optimistically update local bookings list to reflect cancellation
         setBookings(prev => prev.map(b => b.id === bookingId ? {
           ...b,
-          bookingDetails: {
-            ...b.bookingDetails,
-            status: 'cancelled'
-          }
+          bookingDetails: { ...b.bookingDetails, status: 'cancelled' }
         } : b));
         if (user?.id) {
-          // Refresh authoritative data silently (no alert if you prefer)
           getBookings(user.id);
         }
-        alert("La reserva ha sido cancelada exitosamente.");
+        await Swal.fire({
+          icon: 'success',
+          title: 'Reserva cancelada',
+          text: 'La reserva se ha cancelado exitosamente.',
+          timer: 2200,
+          showConfirmButton: false
+        });
       }
     } catch (error) {
-      console.error("Error al cancelar la reserva:", error);
-      alert("Hubo un error al cancelar la reserva.");
+      console.error('Error al cancelar la reserva:', error);
+      Swal.fire({
+        icon: 'error',
+        title: 'Error',
+        text: 'Hubo un problema al cancelar la reserva. Inténtalo nuevamente.'
+      });
     } finally {
       setCancelling(prev => {
         const next = new Set(prev);
@@ -122,6 +135,35 @@ function Bookings() {
       else map.get(rt.id)!.count += 1;
     });
     return Array.from(map.values());
+  };
+
+  const computeBookingTotal = (booking: IBooking) => {
+    // Derive per-room-type cost: price * nights * quantity.
+    try {
+      const availabilityGroups = new Map<string, { price: number; quantity: number; nights: number }>();
+      booking.bookingDetails.availabilities.forEach(av => {
+        const rt = av.room?.roomtype;
+        if (!rt) return;
+        const start = new Date(av.startDate);
+        const end = new Date(av.endDate);
+        const nights = Math.max(1, Math.ceil((end.getTime() - start.getTime())/(1000*60*60*24)));
+        if (!availabilityGroups.has(rt.id)) {
+          availabilityGroups.set(rt.id, { price: rt.price ?? 0, quantity: 1, nights });
+        } else {
+          const g = availabilityGroups.get(rt.id)!;
+          g.quantity += 1;
+          // Use the max nights across availabilities of same type (assumes same stay)
+          g.nights = Math.max(g.nights, nights);
+        }
+      });
+      const recomputed = Array.from(availabilityGroups.values()).reduce((acc, g) => acc + g.price * g.quantity * g.nights, 0);
+      const backend = booking.bookingDetails.total || 0;
+      // If backend total wildly lower (e.g., difference > 1) show recomputed to avoid confusion
+      if (recomputed > 0 && Math.abs(recomputed - backend) > 1) return recomputed;
+      return backend;
+    } catch {
+      return booking.bookingDetails.total;
+    }
   };
 
   return (
@@ -155,7 +197,7 @@ function Bookings() {
             <div className="overflow-x-auto">
               <table className="min-w-full bg-white border rounded">
                 <thead>
-                  <tr className="bg-blue-600 text-white text-xs md:text-sm uppercase">
+                  <tr className="bg-gray-800 text-white text-xs md:text-sm uppercase">
                     <th className="py-3 px-4 text-left">Reserva</th>
                     <th className="py-3 px-4 text-left">Fecha Creación</th>
                     <th className="py-3 px-4 text-left">Hotel</th>
@@ -186,7 +228,7 @@ function Bookings() {
                             <div key={g.name}>{g.count}x {g.name}</div>
                           ))}
                         </td>
-                        <td className="py-3 px-4 font-semibold">${booking.bookingDetails.total}</td>
+                        <td className="py-3 px-4 font-semibold">${computeBookingTotal(booking)}</td>
                         <td className="py-3 px-4">
                           {(() => {
                             const status = booking.bookingDetails.status;

@@ -510,7 +510,7 @@ export default function TypesRegister({ hotelId, onRoomTypesSaved, suppressStand
             <p className="mb-4">
               No tienes permiso para acceder a esta página.
             </p>
-            <Link href="/home" className="btn-secondary">
+            <Link href="/" className="btn-secondary">
               Regresar a la página principal
             </Link>
           </div>

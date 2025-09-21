@@ -5,7 +5,7 @@ import { putUpdateProfileHotelier } from "@/lib/server/fetchUsers";
 import { Field, Form, Formik } from "formik";
 import { jwtDecode } from "jwt-decode";
 import { useRouter } from "next/navigation";
-import { useContext, useEffect, useState } from "react";
+import { useContext, useEffect, useState, useMemo } from "react";
 
 function FormEditProfileHotelier() {
   const router = useRouter();
@@ -13,16 +13,39 @@ function FormEditProfileHotelier() {
   let decodedToken: IDecodeToken
   const [userId, setUserId] = useState<string>("")
 
-  const initialValues: IEditProfileHotelier = {
-    name: "",
-    lastName: "",
-    email: "",
-    country: "",
-    city: "",
-    address: "",
-    phone: "",
-    birthDate: ""
-  };
+  const initialValues: IEditProfileHotelier = useMemo(() => {
+    const fromCtx = user || {} as any;
+    if (!fromCtx?.id && typeof window !== 'undefined') {
+      try {
+        const stored = localStorage.getItem('user');
+        if (stored) {
+          const parsed = JSON.parse(stored);
+          return {
+            name: parsed.name || '',
+            lastName: parsed.lastName || '',
+            email: parsed.email || '',
+            country: parsed.country || '',
+            city: parsed.city || '',
+            address: parsed.address || '',
+            phone: parsed.phone || '',
+            birthDate: (parsed.birthDate ? parsed.birthDate.substring(0,10) : '') || ''
+          } as IEditProfileHotelier;
+        }
+      } catch (e) {
+        console.warn('Failed reading stored user for prefill', e);
+      }
+    }
+    return {
+      name: fromCtx.name || '',
+      lastName: (fromCtx as any).lastName || '',
+      email: fromCtx.email || '',
+      country: (fromCtx as any).country || '',
+      city: (fromCtx as any).city || '',
+      address: (fromCtx as any).address || '',
+      phone: (fromCtx as any).phone || '',
+      birthDate: ((fromCtx as any).birthDate ? (fromCtx as any).birthDate.substring(0,10) : '') || ''
+    } as IEditProfileHotelier;
+  }, [user]);
 
   useEffect(() => {
     const token = localStorage.getItem("token")
@@ -69,7 +92,7 @@ function FormEditProfileHotelier() {
               nuevamente.
             </p>
           </div>
-          <Formik initialValues={initialValues} onSubmit={handleSubmit}>
+          <Formik enableReinitialize initialValues={initialValues} onSubmit={handleSubmit}>
             {({ isSubmitting }) => (
               <Form>
                 <div className="formDiv mb-4">

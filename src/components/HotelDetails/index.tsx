@@ -7,7 +7,7 @@ import Rating from "../Rating";
 import PostReview from "../PostReview";
 import BookingForm from "../BookingForm";
 import Image from "next/image";
-import { useContext } from "react";
+import { useContext, useEffect, useRef, useState } from "react";
 import { FaStar } from "react-icons/fa";
 import { UserContext } from "@/context/userContext";
 
@@ -18,6 +18,35 @@ interface Props {
 const HotelDetail: React.FC<Props> = ({ hotel }) => {
   const { isLoaded, mapCenter, marker } = useGoogleMapsDataLocation(hotel);
   const { isAdmin } = useContext(UserContext);
+  const bookingRef = useRef<HTMLDivElement | null>(null);
+  const mapWrapperRef = useRef<HTMLDivElement | null>(null);
+  const [mapHeight, setMapHeight] = useState<number | undefined>(undefined);
+
+  // Sync heights using ResizeObserver on desktop (lg breakpoint ~1024px)
+  useEffect(() => {
+    const el = bookingRef.current;
+    if (!el) return;
+
+    const updateHeight = () => {
+      if (typeof window === 'undefined') return;
+      // Only enforce equal height on large screens
+      if (window.innerWidth >= 1024) {
+        const h = el.getBoundingClientRect().height;
+        setMapHeight(h);
+      } else {
+        setMapHeight(undefined); // let it auto-size on mobile
+      }
+    };
+
+    updateHeight();
+    const resizeObserver = new ResizeObserver(() => updateHeight());
+    resizeObserver.observe(el);
+    window.addEventListener('resize', updateHeight);
+    return () => {
+      resizeObserver.disconnect();
+      window.removeEventListener('resize', updateHeight);
+    };
+  }, [bookingRef]);
 
   if (!hotel)
     return (
@@ -43,16 +72,19 @@ const HotelDetail: React.FC<Props> = ({ hotel }) => {
   return (
     <div className="flex flex-col items-center mx-auto w-4/5 mt-8">
       <div className="w-full mb-4">
-        <div className="flex flex-col lg:flex-row w-full h-auto lg:h-96 mb-4">
-          <Image
-            unoptimized
-            src={hotel.images[0]}
-            alt={hotel.name}
-            width={400}
-            height={300}
-            className="object-cover rounded-lg flex-1 m-2"
-          />
-          <div className="w-full lg:w-1/2 mb-4 flex-1 m-4">
+        <div className="flex flex-col lg:flex-row w-full gap-6 h-auto lg:min-h-[380px]">
+          <div className="relative flex-1 aspect-video lg:aspect-auto lg:h-96 overflow-hidden rounded-lg">
+            <Image
+              unoptimized
+              src={hotel.images[0]}
+              alt={hotel.name}
+              fill
+              priority
+              sizes="(max-width: 1024px) 100vw, 50vw"
+              className="object-cover"
+            />
+          </div>
+          <div className="flex-1 mb-4 px-1 lg:px-0">
             <div className="flex flex-col lg:flex-row justify-between">
               <h2 className="text-3xl font-bold text-center lg:text-left pb-4">
                 {hotel.name}
@@ -74,14 +106,18 @@ const HotelDetail: React.FC<Props> = ({ hotel }) => {
             </div>
           </div>
         </div>
-
-        <div className="lg:flex block">
-          <div className="lg:relative w-full mb-4 rounded-lg overflow-hidden m-2 flex-1">
+        <div className="flex flex-col lg:flex-row w-full gap-6 mt-6">
+          <div
+            ref={mapWrapperRef}
+            className="relative flex-1 rounded-lg overflow-hidden"
+            style={mapHeight ? { height: mapHeight } : { minHeight: '360px' }}
+          >
             {isLoaded && (
               <GoogleMap
-                mapContainerStyle={{ height: "600px", width: "100%" }}
+                mapContainerStyle={{ width: '100%', height: '100%' }}
                 center={mapCenter}
                 zoom={12}
+                mapContainerClassName="h-full"
               >
                 {marker && marker.getPosition() && (
                   <Marker
@@ -95,16 +131,16 @@ const HotelDetail: React.FC<Props> = ({ hotel }) => {
             )}
           </div>
           {!isAdmin ? (
-            <div className="flex-1 m-2">
+            <div className="flex-1" ref={bookingRef}>
               <BookingForm hotel={hotel} />
             </div>
           ) : (
-            <div className="flex-1 m-2"></div>
+            <div className="flex-1"></div>
           )}
         </div>
         
-        <div className="flex flex-col lg:flex-row">
-          <div className="flex-1 m-2">
+        <div className="flex flex-col lg:flex-row w-full gap-6 mt-6">
+          <div className="flex-1">
             <h2 className="font-semibold text-2xl mb-2">Opiniones</h2>
             {hotel?.reviews && hotel.reviews.length > 0 ? (
               <ul className="w-full">
@@ -135,7 +171,7 @@ const HotelDetail: React.FC<Props> = ({ hotel }) => {
               <p>No hay reseñas disponibles.</p>
             )}
           </div>
-          <div className="flex-1 m-4">
+          <div className="flex-1">
             <PostReview />
           </div>
         </div>

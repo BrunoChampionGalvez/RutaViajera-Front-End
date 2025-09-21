@@ -280,7 +280,7 @@ const BookingForm: React.FC<Props> = ({ hotel }) => {
   };
 
   return (
-    <div className="bg-white rounded-lg shadow-md p-6">
+    <div className="bg-white rounded-lg">
       <h2 className="text-2xl font-bold mb-6">Reservar Habitaciones</h2>
       
       {/* Date Selection */}
@@ -394,7 +394,7 @@ const BookingForm: React.FC<Props> = ({ hotel }) => {
                       <p className="text-gray-600">
                         {getRoomQuantity(roomType.id as string)} × ${roomType.price?.toLocaleString()} × {calculateNights(checkInDate, checkOutDate)} noche(s)
                       </p>
-                      <p className="font-bold text-green-600">
+                      <p className="font-bold text-red-600">
                         Subtotal: ${((roomType.price || 0) * getRoomQuantity(roomType.id as string) * calculateNights(checkInDate, checkOutDate)).toLocaleString()}
                       </p>
                     </div>
@@ -424,7 +424,7 @@ const BookingForm: React.FC<Props> = ({ hotel }) => {
             <div className="border-t pt-2 mt-3">
               <div className="flex justify-between text-lg font-bold">
                 <span>Total a pagar:</span>
-                <span className="text-green-600">${totalAmount.toLocaleString()}</span>
+                <span className="text-red-600">${totalAmount.toLocaleString()}</span>
               </div>
             </div>
           </div>
@@ -444,7 +444,7 @@ const BookingForm: React.FC<Props> = ({ hotel }) => {
         disabled={!isValidBooking() || isBooking}
         className={`w-full py-3 px-4 rounded-lg font-medium text-white transition-colors ${
           isValidBooking() && !isBooking
-            ? 'bg-blue-600 hover:bg-blue-700 cursor-pointer'
+            ? 'bg-red-600 hover:bg-red-700 cursor-pointer'
             : 'bg-gray-400 cursor-not-allowed'
         }`}
       >

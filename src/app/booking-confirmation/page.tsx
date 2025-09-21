@@ -73,6 +73,18 @@ const BookingConfirmationInner: React.FC = () => {
               checkOutDate: raw.checkOutDate || raw.selectedRooms[0]?.checkOutDate || ''
             };
           }
+          // Recompute total defensively from selectedRooms if present
+          if (Array.isArray(normalized.selectedRooms) && normalized.selectedRooms.length > 0) {
+            const recomputed = normalized.selectedRooms.reduce((acc: number, r: any) => {
+              const per = typeof r.totalPrice === 'number'
+                ? r.totalPrice
+                : (r.price || 0) * (r.quantity || 0) * (r.nights || 1);
+              return acc + per;
+            }, 0);
+            if (recomputed > 0 && Math.abs(recomputed - (normalized.totalAmount || 0)) > 0.01) {
+              normalized.totalAmount = recomputed;
+            }
+          }
           setConfirmationData(normalized);
           setLoading(false);
           return true;
@@ -102,7 +114,7 @@ const BookingConfirmationInner: React.FC = () => {
               .then((booking) => {
                 // Transform booking entity into confirmationData shape
                 const hotelName = booking.bookingDetails?.hotel?.name || 'Hotel';
-                const totalAmount = booking.bookingDetails?.total || 0;
+                let totalAmount = booking.bookingDetails?.total || 0;
                 // Group availabilities by roomtype
                 const roomTypeMap = new Map<string, { roomTypeName: string; quantity: number; price: number; nights: number; firstStart: string; firstEnd: string }>();
                 booking.bookingDetails?.availabilities?.forEach((av: any) => {
@@ -129,6 +141,11 @@ const BookingConfirmationInner: React.FC = () => {
                   totalPrice: v.price * v.quantity * v.nights,
                   nights: v.nights
                 }));
+                // Recompute totalAmount from derived rooms if mismatch
+                const recomputedFetchTotal = selectedRooms.reduce((acc, r) => acc + (r.totalPrice || ((r.price||0)*(r.quantity||0)*(r.nights||1))), 0);
+                if (recomputedFetchTotal > 0 && Math.abs(recomputedFetchTotal - totalAmount) > 0.01) {
+                  totalAmount = recomputedFetchTotal;
+                }
                 const first = selectedRooms[0];
                 const confirmationFromFetch = {
                   bookingId: booking.id,
@@ -168,12 +185,14 @@ const BookingConfirmationInner: React.FC = () => {
 
   const formatDate = (dateString: string) => {
     const date = new Date(dateString);
-    return date.toLocaleDateString('es-ES', {
+    const formatted = date.toLocaleDateString('es-ES', {
       weekday: 'long',
       year: 'numeric',
       month: 'long',
       day: 'numeric'
     });
+    // Capitalize first letter
+    return formatted.charAt(0).toUpperCase() + formatted.slice(1);
   };
 
   const generateRoomNumbers = (selectedRooms?: ISelectedRoom[]) => {
@@ -209,7 +228,7 @@ const BookingConfirmationInner: React.FC = () => {
           </h1>
           <button
             onClick={() => router.push('/')}
-            className="bg-blue-600 text-white px-6 py-2 rounded-lg hover:bg-blue-700"
+            className="bg-blue-800 text-white px-6 py-2 rounded-lg hover:bg-blue-900"
           >
             Volver al inicio
           </button>
@@ -240,7 +259,7 @@ const BookingConfirmationInner: React.FC = () => {
 
         {/* Booking Details Card */}
         <div className="bg-white rounded-lg shadow-md overflow-hidden mb-6">
-          <div className="bg-blue-600 text-white p-6">
+          <div className="bg-red-600 text-white p-6">
             <h2 className="text-2xl font-bold">{confirmationData.hotelName}</h2>
             <p className="text-blue-100">ID de Reserva: {confirmationData.bookingId}</p>
           </div>
@@ -251,12 +270,10 @@ const BookingConfirmationInner: React.FC = () => {
               <div>
                 <h3 className="text-lg font-semibold text-gray-800 mb-2">Fecha de Entrada</h3>
                 <p className="text-gray-600">{formatDate(confirmationData.checkInDate)}</p>
-                <p className="text-sm text-gray-500">{confirmationData.checkInDate}</p>
               </div>
               <div>
                 <h3 className="text-lg font-semibold text-gray-800 mb-2">Fecha de Salida</h3>
                 <p className="text-gray-600">{formatDate(confirmationData.checkOutDate)}</p>
-                <p className="text-sm text-gray-500">{confirmationData.checkOutDate}</p>
               </div>
             </div>
 
@@ -308,7 +325,7 @@ const BookingConfirmationInner: React.FC = () => {
                 <div className="border-t pt-3 mt-3">
                   <div className="flex justify-between items-center">
                     <span className="text-lg font-semibold text-gray-800">Total Pagado:</span>
-                    <span className="text-2xl font-bold text-green-600">
+                    <span className="text-2xl font-bold text-red-600">
                       ${confirmationData.totalAmount.toLocaleString()}
                     </span>
                   </div>
@@ -346,7 +363,7 @@ const BookingConfirmationInner: React.FC = () => {
               localStorage.removeItem('bookingConfirmation');
               router.push('/dashboard/bookings');
             }}
-            className="bg-blue-600 text-white px-6 py-3 rounded-lg hover:bg-blue-700 transition-colors"
+            className="bg-red-600 text-white px-6 py-3 rounded-lg hover:bg-red-700 transition-colors"
           >
             Ver Mis Reservas
           </button>
@@ -355,7 +372,7 @@ const BookingConfirmationInner: React.FC = () => {
               localStorage.removeItem('bookingConfirmation');
               router.push('/');
             }}
-            className="bg-green-600 text-white px-6 py-3 rounded-lg hover:bg-green-700 transition-colors"
+            className="bg-gray-800 text-white px-6 py-3 rounded-lg hover:bg-gray-700 transition-colors"
           >
             Volver al Inicio
           </button>

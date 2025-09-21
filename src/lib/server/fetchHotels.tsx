@@ -63,21 +63,25 @@ export const postHotel = async (hotel: IHotelRegisterPost) => {
 
 export const postRoomType = async (roomType: Partial<IRoomType>) => {
   const token = typeof window !== "undefined" && localStorage.getItem("token");
-  const response = await fetch(
-    `${process.env.NEXT_PUBLIC_API_URL}/roomstype`,
-    {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        Authorization: `Bearer ${token}`,
-      },
-      body: JSON.stringify(roomType),
-    }
-  );
-
-  if (!response.ok) throw new Error('Error in posting the room type.')
-  const data = await response.json();
-  return data;
+  if (!token) throw new Error('Token no encontrado (inicia sesión de nuevo).');
+  const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/roomstype`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+    body: JSON.stringify(roomType)
+  });
+  const rawText = await response.text();
+  if (!response.ok) {
+    let backendMessage = rawText;
+    try {
+      const json = JSON.parse(rawText);
+      backendMessage = Array.isArray(json.message) ? json.message.join(', ') : json.message || json.error || backendMessage;
+    } catch {}
+    // Common backend messages mapping
+    if (/already exists/i.test(backendMessage)) backendMessage = 'Ya existe un tipo de habitación con ese nombre en este hotel.';
+    if (/hotel id/i.test(backendMessage) && /not found/i.test(backendMessage)) backendMessage = 'Hotel no encontrado para asociar el room type.';
+    throw new Error(`Error creando room type: ${backendMessage}`);
+  }
+  try { return JSON.parse(rawText); } catch { return true as any; }
 };
 
 export const postRoom = async (rooms: string[], roomTypeId: string | null) => {
@@ -129,7 +133,7 @@ export const postRoom = async (rooms: string[], roomTypeId: string | null) => {
         if (lowered.includes('roomtype') && lowered.includes('not') && lowered.includes('found')) {
           backendMsg = 'El tipo de habitación no existe (verifica que se guardó correctamente).';
         } else if (lowered.includes('already exists')) {
-          backendMsg = 'Ese número de habitación ya existe en este hotel.';
+          backendMsg = 'Ese número de habitación ya existe en este tipo.';
         }
         throw new Error(backendMsg || 'Error posting room');
       }
@@ -418,4 +422,102 @@ export const fetchBookingById = async (bookingId: string) => {
   });
   if (!response.ok) throw new Error(`Error obteniendo booking: ${response.status}`);
   return await response.json();
+};
+
+// --- Extended hotel admin editing helpers (room types & rooms) ---
+
+// Update an existing room type
+export const updateRoomType = async (roomTypeId: string, roomType: Partial<IRoomType>) => {
+  const token = localStorage.getItem('token');
+  if (!token) throw new Error('No estás autorizado.');
+  const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/roomstype/${roomTypeId}`, {
+    method: 'PUT',
+    headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+    body: JSON.stringify(roomType)
+  });
+  if (!response.ok) {
+    const txt = await response.text();
+    throw new Error(`Error actualizando room type (${response.status}): ${txt}`);
+  }
+  try { return await response.json(); } catch { return true; }
+};
+
+// Delete a room type (soft delete expected on backend)
+export const deleteRoomType = async (roomTypeId: string) => {
+  const token = localStorage.getItem('token');
+  if (!token) throw new Error('No estás autorizado.');
+  const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/roomstype/${roomTypeId}`, {
+    method: 'DELETE',
+    headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` }
+  });
+  const text = await response.text();
+  if (response.ok) return true;
+  // Backend soft-delete flow returns 400 if already eliminated; treat as idempotent success
+  if (response.status === 400 && /eliminated|was eliminated/i.test(text)) {
+    return true;
+  }
+  throw new Error(`Error eliminando room type (${response.status}): ${text}`);
+};
+
+// List rooms for a given room type
+export const getRoomsByRoomTypeIdForAdmin = async (roomTypeId: string) => {
+  const token = localStorage.getItem('token');
+  if (!token) throw new Error('No estás autorizado.');
+  const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/rooms/roomtype/${roomTypeId}`, {
+    method: 'GET',
+    headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` }
+  });
+  if (!response.ok) throw new Error(`Error obteniendo rooms (${response.status})`);
+  return await response.json();
+};
+
+// Update a single room (e.g., change roomNumber or availability toggles later)
+export const updateRoom = async (roomId: string, roomPatch: { roomNumber?: string }) => {
+  const token = localStorage.getItem('token');
+  if (!token) throw new Error('No estás autorizado.');
+  const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/rooms/${roomId}`, {
+    method: 'PUT',
+    headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+    body: JSON.stringify(roomPatch)
+  });
+  if (!response.ok) {
+    const raw = await response.text();
+    throw new Error(`Error actualizando room (${response.status}): ${raw}`);
+  }
+  try { return await response.json(); } catch { return true; }
+};
+
+// Delete a room
+export const deleteRoom = async (roomId: string) => {
+  const token = localStorage.getItem('token');
+  if (!token) throw new Error('No estás autorizado.');
+  const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/rooms/${roomId}`, {
+    method: 'DELETE',
+    headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` }
+  });
+  if (!response.ok) {
+    const raw = await response.text();
+    throw new Error(`Error eliminando room (${response.status}): ${raw}`);
+  }
+  return true;
+};
+
+// Upload images for room types (returns array of URLs)
+export const uploadRoomTypeImages = async (files: File[]) => {
+  if (!files || files.length === 0) return [] as string[];
+  const token = localStorage.getItem('token');
+  if (!token) throw new Error('No estás autorizado.');
+  const form = new FormData();
+  files.forEach(f => form.append('files', f));
+  const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/roomstype/images`, {
+    method: 'POST',
+    headers: { Authorization: `Bearer ${token}` },
+    body: form
+  });
+  if (!response.ok) {
+    const txt = await response.text();
+    throw new Error(`Error subiendo imágenes (${response.status}): ${txt}`);
+  }
+  const data = await response.json();
+  return data.files || [];
 };

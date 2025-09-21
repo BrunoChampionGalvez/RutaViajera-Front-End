@@ -59,7 +59,7 @@ export default function SuperAdmin() {
             <Sidebar setSidebarVisible={setSidebarVisible} toggleSidebar={toggleSidebar} isSidebarVisible={isSidebarVisible} />
 
             {/* Main Content */}
-            <main className={`flex-1 p-6 transition-all md:ml-0`}>
+            <main className={`flex-1 p-6 transition-all`}>
                 {/* Title for the statistics section */}
                 <div>
                     <button

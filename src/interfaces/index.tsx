@@ -420,7 +420,9 @@ export interface IProductsListProps {
 }
 
 export interface QueryParams {
-  rating?: number;
+  rating?: number; // legacy single rating (deprecated)
+  ratingMin?: number;
+  ratingMax?: number;
   country?: string;
   city?: string;
   minPrice?: number;
