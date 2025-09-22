@@ -12,7 +12,7 @@ function Navbar() {
 
   if (isLogged) {
     return (
-      <div className="h-16 header sticky top-0 bg-white shadow-md flex items-center justify-between px-8 py-02 z-50">
+  <div className="h-16 header sticky top-0 bg-white shadow-md border-b border-gray-200 flex items-center justify-between px-8 py-02 z-[100]">
         <Link href="/" className="flex w-3/12 items-center">
           <Image
             src={"/logo.png"}
@@ -131,7 +131,7 @@ function Navbar() {
 
   if (!isLogged) {
     return (
-      <div className="h-16 header sticky top-0 bg-white shadow-md flex items-center justify-between px-8 py-02 z-50">
+  <div className="h-16 header sticky top-0 bg-white shadow-md border-b border-gray-200 flex items-center justify-between px-8 py-02 z-[100]">
         <Link href="/" className="flex w-3/12 items-center">
           <Image
             src={"/logo.png"}

@@ -23,51 +23,69 @@ const HotelDetail: React.FC<Props> = ({ hotel }) => {
   const [mapHeight, setMapHeight] = useState<number | undefined>(undefined);
 
   // Sync heights using ResizeObserver on desktop (lg breakpoint ~1024px)
+  // Previous implementation sometimes missed attaching because bookingRef.current was null on first effect run.
+  // This version retries briefly until the element exists and re-attaches on hotel or map load state changes.
   useEffect(() => {
-    const el = bookingRef.current;
-    if (!el) return;
+    let resizeObserver: ResizeObserver | null = null;
+    let retryTimer: any = null;
 
     const updateHeight = () => {
       if (typeof window === 'undefined') return;
-      // Only enforce equal height on large screens
+      const el = bookingRef.current;
+      if (!el) return;
       if (window.innerWidth >= 1024) {
         const h = el.getBoundingClientRect().height;
         setMapHeight(h);
       } else {
-        setMapHeight(undefined); // let it auto-size on mobile
+        setMapHeight(undefined); // auto size on mobile
       }
     };
 
-    updateHeight();
-    const resizeObserver = new ResizeObserver(() => updateHeight());
-    resizeObserver.observe(el);
+    const attach = () => {
+      const el = bookingRef.current;
+      if (!el) {
+        // Retry a few times (up to ~1s) until the form mounts
+        if (!retryTimer) {
+          let attempts = 0;
+          retryTimer = setInterval(() => {
+            attempts += 1;
+            const target = bookingRef.current;
+            if (target) {
+              updateHeight();
+              resizeObserver = new ResizeObserver(updateHeight);
+              resizeObserver.observe(target);
+              clearInterval(retryTimer);
+              retryTimer = null;
+            } else if (attempts > 10) {
+              clearInterval(retryTimer);
+              retryTimer = null;
+            }
+          }, 100);
+        }
+        return;
+      }
+      updateHeight();
+      resizeObserver = new ResizeObserver(updateHeight);
+      resizeObserver.observe(el);
+    };
+
+    attach();
     window.addEventListener('resize', updateHeight);
     return () => {
-      resizeObserver.disconnect();
+      if (resizeObserver) resizeObserver.disconnect();
+      if (retryTimer) clearInterval(retryTimer);
       window.removeEventListener('resize', updateHeight);
     };
-  }, [bookingRef]);
+  }, [hotel, isLoaded]);
 
-  if (!hotel)
+  // We don't early-return on map loading to keep layout space reserved.
+  if (!hotel) {
     return (
       <div className="flex justify-center items-center h-64">
-        <p>Loading...</p>
+        <p>Cargando hotel...</p>
       </div>
     );
-
-  if (!isLoaded)
-    return (
-      <div className="flex justify-center items-center h-64">
-        <p>Loading...</p>
-      </div>
-    );
-
-  if (!mapCenter)
-    return (
-      <div className="flex justify-center items-center h-64">
-        <p>Loading map...</p>
-      </div>
-    );
+  }
 
   return (
     <div className="flex flex-col items-center mx-auto w-4/5 mt-8">
@@ -106,13 +124,13 @@ const HotelDetail: React.FC<Props> = ({ hotel }) => {
             </div>
           </div>
         </div>
-        <div className="flex flex-col lg:flex-row w-full gap-6 mt-6">
+        <div className="flex flex-col lg:flex-row w-full gap-6 mt-6 items-stretch">
           <div
             ref={mapWrapperRef}
-            className="relative flex-1 rounded-lg overflow-hidden"
-            style={mapHeight ? { height: mapHeight } : { minHeight: '360px' }}
+            className={`relative rounded-lg overflow-hidden w-full ${!mapHeight ? 'h-80 sm:h-96' : ''} lg:flex-1`}
+            style={mapHeight ? { height: mapHeight } : undefined}
           >
-            {isLoaded && (
+            {isLoaded && mapCenter ? (
               <GoogleMap
                 mapContainerStyle={{ width: '100%', height: '100%' }}
                 center={mapCenter}
@@ -128,6 +146,10 @@ const HotelDetail: React.FC<Props> = ({ hotel }) => {
                   />
                 )}
               </GoogleMap>
+            ) : (
+              <div className="absolute inset-0 flex items-center justify-center bg-gray-100 animate-pulse text-gray-500 text-sm">
+                Cargando mapa...
+              </div>
             )}
           </div>
           {!isAdmin ? (

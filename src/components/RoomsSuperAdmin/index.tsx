@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useState, useMemo } from "react";
 import { useContext } from "react";
 import { SuperAdminContext } from "../../context/superAdminContext";
 import { IRoomOfSuperAdmin } from "@/interfaces";
@@ -16,7 +16,9 @@ const RoomsOfRoomType = ({ roomTypeId, searchQuery }: RoomsOfRoomTypeProps) => {
     const [rooms, setRooms] = useState<IRoomOfSuperAdmin[]>([]);
     const [filteredRooms, setFilteredRooms] = useState<IRoomOfSuperAdmin[]>([]);
     const [currentPage, setCurrentPage] = useState(1);
-    const [itemsPerPage] = useState(18); // 10 rooms per column, 3 columns, 2 sets = 30 rooms per page
+    const [itemsPerPage] = useState(15); // Table rows per page
+    const [sortKey, setSortKey] = useState<'roomNumber' | 'isAvailable' | 'isDeleted'>('roomNumber');
+    const [sortDir, setSortDir] = useState<'asc' | 'desc'>('asc');
     const { fetchRoomsByRoomTypeId, fetchDeleteRoom, fetchUpdateRoom, fetchRoomsBySearch } = useContext(SuperAdminContext);
     const [isSidebarVisible, setSidebarVisible] = useState(false);
 
@@ -28,12 +30,16 @@ const RoomsOfRoomType = ({ roomTypeId, searchQuery }: RoomsOfRoomTypeProps) => {
     const [selectedRoomId, setSelectedRoomId] = useState<string | null>(null);
     const [newRoomNumber, setNewRoomNumber] = useState<string>("");
 
-    const handleNextPage = () => {
-        setCurrentPage(currentPage + 1);
-    };
+    const handleNextPage = () => setCurrentPage(p => p + 1);
+    const handlePrevPage = () => setCurrentPage(p => Math.max(1, p - 1));
 
-    const handlePrevPage = () => {
-        setCurrentPage(currentPage - 1);
+    const handleSort = (key: typeof sortKey) => {
+        if (key === sortKey) {
+            setSortDir(d => d === 'asc' ? 'desc' : 'asc');
+        } else {
+            setSortKey(key);
+            setSortDir('asc');
+        }
     };
 
     useEffect(() => {
@@ -115,19 +121,41 @@ const RoomsOfRoomType = ({ roomTypeId, searchQuery }: RoomsOfRoomTypeProps) => {
         setIsModalOpen(false);
     };
 
-    const paginatedRooms = Array.isArray(filteredRooms)
-        ? filteredRooms.slice(
-            (currentPage - 1) * itemsPerPage,
-            currentPage * itemsPerPage
-        )
-        : [];
+    const sortedRooms = useMemo(() => {
+        const arr = [...filteredRooms];
+        arr.sort((a, b) => {
+            let aVal: any = a[sortKey];
+            let bVal: any = b[sortKey];
+            if (sortKey === 'roomNumber') {
+                // Natural numeric then string compare
+                const aNum = parseInt(aVal, 10);
+                const bNum = parseInt(bVal, 10);
+                if (!isNaN(aNum) && !isNaN(bNum) && aNum !== bNum) return aNum - bNum;
+            }
+            if (aVal < bVal) return -1;
+            if (aVal > bVal) return 1;
+            return 0;
+        });
+        return sortDir === 'asc' ? arr : arr.reverse();
+    }, [filteredRooms, sortKey, sortDir]);
+
+    const totalPages = Math.ceil(sortedRooms.length / itemsPerPage) || 1;
+    const paginatedRooms = sortedRooms.slice(
+        (currentPage - 1) * itemsPerPage,
+        currentPage * itemsPerPage
+    );
+
+    useEffect(() => {
+        // Reset to first page when filters/sorting change
+        setCurrentPage(1);
+    }, [searchQuery, sortKey, sortDir]);
 
     return (
         <div className="flex">
             <Sidebar setSidebarVisible={setSidebarVisible} toggleSidebar={toggleSidebar} isSidebarVisible={isSidebarVisible} />
 
             <div className="p-8 w-full">
-                <div className="xs:flex-1  flex-col md:flex-row justify-between items-center">
+                <div className="xs:flex-1 flex-col md:flex-row justify-between items-center">
                     <button
                         onClick={toggleSidebar}
                         className="md:hidden mb-4 inline-flex p-2 bg-gray-200 rounded-md hover:bg-gray-300"
@@ -139,41 +167,84 @@ const RoomsOfRoomType = ({ roomTypeId, searchQuery }: RoomsOfRoomTypeProps) => {
                         </div>
                     </button>
                 </div>
-                <div className="flex flex-col md:flex-row justify-between items-center mb-6">
-                    <h1 className="text-2xl text-center md:text-3xl font-bold flex-grow mb-4 md:mb-0">
-                        Habitaciones
-                    </h1>
-                </div>
-                <div className="grid grid-cols-1 md:grid-cols-3 gap-6"> {/* Responsive columns */}
-                    {paginatedRooms.map((room) => (
-                        <div key={room.id} className="border-b border-r border-l border-t border-gray-350 flex flex-col md:grid md:grid-cols-3 gap-2"> {/* Responsive layout for room items */}
-                            <span className="font-semibold w-full p-2 text-center bg-gray-200 rounded-md">Número: {room.roomNumber}</span>
-                            <button
-                                className="bg-[#f83f3a] text-white rounded-md p-2 w-full hover:bg-[#e63946]"
-                                onClick={() => handleDeleteRoom(room.id)}
-                            >
-                                Eliminar
-                            </button>
-                            <button
-                                className="bg-[#f83f3a] text-white rounded-md p-2 w-full hover:bg-[#e63946]"
-                                onClick={() => openModal(room.id, room.roomNumber)}
-                            >
-                                Actualizar
-                            </button>
+                <div className="flex flex-col md:flex-row md:items-end md:justify-between gap-4 mb-6">
+                    <div>
+                        <h1 className="text-3xl font-bold">Habitaciones</h1>
+                        <p className="text-sm text-gray-600 mt-1">Gestiona las habitaciones del tipo seleccionado. Ordena, edita o elimina según sea necesario.</p>
+                    </div>
+                    <div className="flex gap-2 flex-wrap">
+                        <div className="flex items-center gap-1 text-sm bg-gray-100 px-3 py-1 rounded-md">
+                            <span className="inline-block w-2 h-2 rounded-full bg-green-500"></span>
+                            Disponible
                         </div>
-                    ))}
+                        <div className="flex items-center gap-1 text-sm bg-gray-100 px-3 py-1 rounded-md">
+                            <span className="inline-block w-2 h-2 rounded-full bg-red-500"></span>
+                            No disponible
+                        </div>
+                        <div className="flex items-center gap-1 text-sm bg-gray-100 px-3 py-1 rounded-md">
+                            <span className="inline-block w-2 h-2 rounded-full bg-gray-400"></span>
+                            Eliminada
+                        </div>
+                    </div>
                 </div>
-                <div className="flex justify-center space-x-4 mt-6">
-                    {currentPage > 1 && (
-                        <button onClick={handlePrevPage} className="bg-[#f83f3a] text-white rounded-md p-2 px-4 hover:bg-[#e63946]">
-                            Anterior
-                        </button>
-                    )}
-                    {filteredRooms.length > currentPage * itemsPerPage && (
-                        <button onClick={handleNextPage} className="bg-[#f83f3a] text-white rounded-md p-2 px-4 hover:bg-[#e63946]">
-                            Siguiente
-                        </button>
-                    )}
+
+                <div className="overflow-x-auto border border-gray-200 rounded-lg shadow-sm bg-white">
+                    <table className="min-w-full text-sm">
+                        <thead className="bg-gray-50 text-gray-700">
+                            <tr>
+                                <Th label="Número" sortKey="roomNumber" currentKey={sortKey} dir={sortDir} onSort={handleSort} />
+                                <Th label="Disponible" sortKey="isAvailable" currentKey={sortKey} dir={sortDir} onSort={handleSort} />
+                                <Th label="Eliminada" sortKey="isDeleted" currentKey={sortKey} dir={sortDir} onSort={handleSort} />
+                                <th className="py-2 px-3 text-left">Acciones</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {paginatedRooms.length === 0 && (
+                                <tr>
+                                    <td colSpan={4} className="py-6 text-center text-gray-500">No se encontraron habitaciones.</td>
+                                </tr>
+                            )}
+                            {paginatedRooms.map(room => {
+                                const availabilityBadge = room.isAvailable ? 'bg-green-100 text-green-700 border-green-300' : 'bg-red-100 text-red-700 border-red-300';
+                                const deletedBadge = room.isDeleted ? 'bg-gray-200 text-gray-700 border-gray-300' : 'bg-white text-gray-500 border-gray-200';
+                                return (
+                                    <tr key={room.id} className="border-t hover:bg-gray-50 transition-colors">
+                                        <td className="py-2 px-3 font-medium">{room.roomNumber}</td>
+                                        <td className="py-2 px-3">
+                                            <span className={`inline-flex items-center gap-1 border text-xs font-semibold px-2.5 py-1 rounded-full ${availabilityBadge}`}>
+                                                <span className={`w-1.5 h-1.5 rounded-full ${room.isAvailable ? 'bg-green-500' : 'bg-red-500'}`}></span>
+                                                {room.isAvailable ? 'Sí' : 'No'}
+                                            </span>
+                                        </td>
+                                        <td className="py-2 px-3">
+                                            <span className={`inline-flex items-center gap-1 border text-xs font-semibold px-2.5 py-1 rounded-full ${deletedBadge}`}>
+                                                {room.isDeleted ? 'Sí' : 'No'}
+                                            </span>
+                                        </td>
+                                        <td className="py-2 px-3">
+                                            <div className="flex gap-2">
+                                                <button
+                                                    onClick={() => openModal(room.id, room.roomNumber)}
+                                                    className="px-2 py-1 text-xs rounded-md border border-gray-300 bg-white hover:bg-gray-100 font-medium"
+                                                >Editar</button>
+                                                <button
+                                                    onClick={() => handleDeleteRoom(room.id)}
+                                                    className="px-2 py-1 text-xs rounded-md bg-[#f83f3a] text-white hover:bg-[#e63946] font-medium"
+                                                >Eliminar</button>
+                                            </div>
+                                        </td>
+                                    </tr>
+                                );
+                            })}
+                        </tbody>
+                    </table>
+                </div>
+                <div className="flex flex-col sm:flex-row items-center justify-between gap-4 mt-6">
+                    <div className="text-sm text-gray-600">Página {currentPage} de {totalPages} ({filteredRooms.length} habitaciones)</div>
+                    <div className="flex gap-2">
+                        <button disabled={currentPage === 1} onClick={handlePrevPage} className="px-3 py-1.5 rounded-md text-sm border border-gray-300 bg-white disabled:opacity-40 hover:bg-gray-100">Anterior</button>
+                        <button disabled={currentPage === totalPages} onClick={handleNextPage} className="px-3 py-1.5 rounded-md text-sm border border-gray-300 bg-white disabled:opacity-40 hover:bg-gray-100">Siguiente</button>
+                    </div>
                 </div>
             </div>
             {/* Render the modal */}
@@ -184,6 +255,33 @@ const RoomsOfRoomType = ({ roomTypeId, searchQuery }: RoomsOfRoomTypeProps) => {
                 defaultValue={newRoomNumber}
             />
         </div>
+    );
+};
+
+// Small helper component for sortable table headers
+interface ThProps {
+    label: string;
+    sortKey: 'roomNumber' | 'isAvailable' | 'isDeleted';
+    currentKey: string;
+    dir: 'asc' | 'desc';
+    onSort: (key: ThProps['sortKey']) => void;
+}
+
+const Th = ({ label, sortKey, currentKey, dir, onSort }: ThProps) => {
+    const isActive = currentKey === sortKey;
+    return (
+        <th
+            scope="col"
+            onClick={() => onSort(sortKey)}
+            className="py-2 px-3 text-left font-semibold cursor-pointer select-none group"
+        >
+            <span className="inline-flex items-center gap-1">
+                {label}
+                <span className={`text-xs transition-opacity ${isActive ? 'opacity-100' : 'opacity-30 group-hover:opacity-60'}`}>
+                    {isActive ? (dir === 'asc' ? '▲' : '▼') : '▲'}
+                </span>
+            </span>
+        </th>
     );
 };
 

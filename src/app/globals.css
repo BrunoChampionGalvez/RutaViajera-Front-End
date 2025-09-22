@@ -32,6 +32,31 @@ body {
   margin: 0;
   padding: 0;
 }
+
+/* MyHotels specific tweaks */
+.myhotels-swiper .swiper-pagination {
+  bottom: 6px !important;
+  left: 50% !important;
+  transform: translateX(-50%) !important;
+  width: auto !important;
+}
+.myhotels-swiper .swiper-pagination-bullet {
+  background: #f8263a;
+  opacity: 0.4;
+}
+.myhotels-swiper .swiper-pagination-bullet-active {
+  opacity: 1;
+}
+.myhotels-swiper .swiper-wrapper { align-items: stretch; }
+.myhotels-swiper .swiper-slide { display: flex; }
+/* Ensure each slide's internal card is centered and consistent width */
+.myhotels-swiper .swiper-slide { align-items: stretch; }
+.myhotels-swiper .hotel-card { width:100%; max-width:380px; margin:0 auto; }
+
+/* Ensure any sidebar (if absolute/fixed) overlays below header but above content */
+.app-sidebar-layer {
+  z-index: 40; /* below header z-50, above content default */
+}
 /* Custom dual range thumbs */
 .range-thumb {
   -webkit-appearance: none;

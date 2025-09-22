@@ -3,7 +3,6 @@
 import { IRoomTypeRegister, RoomTypesRegisterProps } from "@/interfaces";
 import { ErrorMessage, Field, Form, Formik } from "formik";
 import Link from "next/link";
-import createImage from "../../../public/create.png";
 import Image from "next/image";
 import { getRoomTypesByHotelId, postRoomType } from "@/lib/server/fetchHotels";
 import { useContext, useEffect, useState } from "react";
@@ -14,509 +13,331 @@ import { HotelContext } from "@/context/hotelContext";
 import { FaArrowDown } from "react-icons/fa";
 import { CiSaveUp2 } from "react-icons/ci";
 import { IconContext } from "react-icons";
-import { MdDelete } from "react-icons/md";
 
 interface ExtendedRoomTypesRegisterProps extends RoomTypesRegisterProps {
   onRoomTypesSaved?: (roomTypes: Partial<IRoomTypeRegister>[]) => void;
-  suppressStandaloneNav?: boolean; // si true no muestra elementos que dependen de flujo individual
+  suppressStandaloneNav?: boolean;
+  draftList?: Partial<IRoomTypeRegister>[];
+  onDraftListChange?: (list: Partial<IRoomTypeRegister>[]) => void;
 }
 
-export default function TypesRegister({ hotelId, onRoomTypesSaved, suppressStandaloneNav = false }: ExtendedRoomTypesRegisterProps) {
-  const { isAdmin, user } = useContext(UserContext);
-  const { setRoomTypeIdBeingCreated } = useContext(HotelContext)
+export default function TypesRegister({ hotelId, onRoomTypesSaved, suppressStandaloneNav = false, draftList, onDraftListChange }: ExtendedRoomTypesRegisterProps) {
+  const { isAdmin } = useContext(UserContext);
+  const { setRoomTypeIdBeingCreated } = useContext(HotelContext);
   const router = useRouter();
-  const [savedRoomTypes, setSavedRoomTypes] = useState<Partial<IRoomTypeRegister>[]>([])
-  const [nonSavedRoomTypes, setNonSavedRoomTypes] = useState<Partial<IRoomTypeRegister>[]>([])
-  const [visibleId, setVisibleId] = useState<number | null | undefined>(null);
-  const [visibleRoomType, setVisibleRoomType] = useState<Partial<IRoomTypeRegister> | null>(null)
-  const [isSavedRoomTypesVisible, setIsSavedRoomTypesVisible] = useState<boolean>(false)
-  const [isNonSavedRoomTypesVisible, setIsNonSavedRoomTypesVisible] = useState<boolean>(true)
-  const [isAdding, setIsAdding] = useState<boolean>(false)
 
-  const showSavedRoomTypes = () => {
-    setIsNonSavedRoomTypesVisible(false)
-    setIsSavedRoomTypesVisible(true)
-  }
+  const [savedRoomTypes, setSavedRoomTypes] = useState<Partial<IRoomTypeRegister>[]>([]);
+  const [draftRoomTypes, setDraftRoomTypes] = useState<Partial<IRoomTypeRegister>[]>(draftList || []);
+  // Start counter at 1 so we never have a temporary id of 0 (which caused toggle issues)
+  const [counter, setCounter] = useState(1);
+  const [selectedBuffers, setSelectedBuffers] = useState<Uint8Array[]>([]);
+  const [adding, setAdding] = useState(false);
+  const [saving, setSaving] = useState(false);
+  const [expandedId, setExpandedId] = useState<number | null>(null);
+  const [activeTab, setActiveTab] = useState<'add' | 'list'>('add');
 
-  const showNonSavedRoomTypes = () => {
-    setIsSavedRoomTypesVisible(false)
-    setIsNonSavedRoomTypesVisible(true)
-  }
+  const initialValues: Omit<IRoomTypeRegister, 'id'> = { name: "", capacity: 0, totalBathrooms: 0, totalBeds: 0, images: [], price: 0 };
 
-  const toggleRoomTypeDetailsId = (id: number | undefined) => {
-    setVisibleId(visibleId === id ? null : id);
-  };
-
-  const [initialValues, setInitialValues] = useState<Omit<IRoomTypeRegister, 'id'>>({
-    name: "",
-    capacity: 0,
-    totalBathrooms: 0,
-    totalBeds: 0,
-    images: [],
-    price: 0
-  });
-
-  const uploadImageToCloudinary = async (
-    file: string | File
-  ): Promise<string> => {
-    const formData = new FormData();
-    formData.append("file", file);
-    formData.append(
-      "upload_preset",
-      process.env.NEXT_PUBLIC_CLOUDINARY_UPLOAD_PRESET || ""
-    );
-
-    try {
-      const response = await fetch(
-        `https://api.cloudinary.com/v1_1/${process.env.NEXT_PUBLIC_CLOUDINARY_CLOUD_NAME}/image/upload`,
-        {
-          method: "POST",
-          body: formData,
-        }
-      );
-
-      const data = await response.json();
-      if (data.secure_url) {
-        return data.secure_url;
-      } else {
-        throw new Error("No se recibió el enlace de la imagen");
+  // Fetch existing saved room types
+  useEffect(() => {
+    if (!hotelId) return;
+    (async () => {
+      try {
+        const existing = await getRoomTypesByHotelId(hotelId);
+        setSavedRoomTypes(existing);
+      } catch (e) {
+        console.warn(e);
       }
-    } catch (error) {
-      console.error("Error al subir la imagen a Cloudinary:", error);
-      throw new Error("Error al subir la imagen");
+    })();
+  }, [hotelId]);
+
+  // Sync incoming draft list from parent if provided
+  useEffect(() => {
+    if (draftList) setDraftRoomTypes(draftList);
+  }, [draftList]);
+
+  const handleImagesSelection = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const files = e.target.files;
+    if (!files) return;
+    for (const f of Array.from(files)) {
+      const buf = new Uint8Array(await f.arrayBuffer());
+      setSelectedBuffers(prev => [...prev, buf]);
     }
   };
 
-  const handleDeleteNonSavedRoomType = (id: number | undefined) => {
-    const newNonSavedRoomTypes = [...nonSavedRoomTypes]
-    const filteredNonSavedRoomTypes = newNonSavedRoomTypes.filter((roomType) => roomType.id !== id)
-    setNonSavedRoomTypes(filteredNonSavedRoomTypes)
-  }
+  const addDraft = (vals: Omit<IRoomTypeRegister, 'id'>, reset: () => void) => {
+    setAdding(true);
+    const exists = [...draftRoomTypes, ...savedRoomTypes].some(r => r.name?.trim().toLowerCase() === vals.name.trim().toLowerCase());
+    if (exists) {
+      Swal.fire({ icon: 'error', title: 'Nombre duplicado', text: 'Ese nombre ya existe' });
+      setAdding(false);
+      return;
+    }
+    const draft: Partial<IRoomTypeRegister> = {
+      id: counter,
+      ...vals,
+      images: selectedBuffers.map(b => Array.from(b))
+    } as any;
+    const updated = [...draftRoomTypes, draft];
+    setDraftRoomTypes(updated);
+    onDraftListChange?.(updated);
+    setCounter(c => c + 1);
+    setSelectedBuffers([]);
+    reset();
+    setAdding(false);
+    // Removed automatic switch to 'list' to allow adding multiple without losing context
+  };
 
-  const [roomTypeIdCounter, setRoomTypeIdCounter] = useState<number>(0)
+  const deleteDraft = (id: number | undefined) => {
+    const updated = draftRoomTypes.filter(r => r.id !== id);
+    setDraftRoomTypes(updated);
+    onDraftListChange?.(updated);
+  };
 
-  const handleSubmit = async (
-    values: Omit<IRoomTypeRegister, 'id'>,
-    { setSubmitting }: { setSubmitting: (isSubmitting: boolean) => void }
-  ) => {
-    if (hotelId) {
+  const toggleExpand = (id: number | undefined) => {
+    if (typeof id !== 'number') return; // ignore drafts without ids
+    setExpandedId(prev => (prev === id ? null : id));
+  };
 
-      const token = localStorage.getItem("token");
-      if (!token) {
-        alert("Hubo un problema. Por favor, inicie sesión de nuevo.");
-        setSubmitting(false);
-        return;
-      }
-
-      console.log("nonSavedRoomTypes:", nonSavedRoomTypes);
-
-
-      const newRoomTypes = [
-        ...nonSavedRoomTypes
-      ]
-
-      const newRoomTypesNoId = newRoomTypes.map(roomType => {
-        delete roomType.id
-        return roomType
-      })
-      const arrayOfSavedRoomTypes: IRoomTypeRegister[] = []
-      console.log("newRoomTypesNoId:", newRoomTypesNoId);
-
-      for (const roomType of newRoomTypesNoId) {
-        try {
-          const objectToSend = {
-            arraysOfBuffers: roomType.images
-          }
-          let uploadedUrls: string[] = [];
+  const persistAll = async () => {
+    if (!hotelId) {
+      router.push('/post-hotel');
+      return;
+    }
+    if (!draftRoomTypes.length) return;
+    setSaving(true);
+    const saved: IRoomTypeRegister[] = [];
+    for (const d of draftRoomTypes) {
+      try {
+        let uploaded: string[] = [];
+        if (Array.isArray(d.images) && d.images.length) {
           try {
-            const responsePostImages = await fetch('/api/upload-hotel-images', {
+            const resp = await fetch('/api/upload-hotel-images', {
               method: 'POST',
               headers: { 'Content-Type': 'application/json' },
-              body: JSON.stringify(objectToSend)
+              body: JSON.stringify({ arraysOfBuffers: d.images })
             });
-            if (responsePostImages.ok) {
-              uploadedUrls = await responsePostImages.json();
-            } else {
-              console.warn('Fallo subida imágenes roomType, se continúa sin imágenes');
-            }
+            if (resp.ok) uploaded = await resp.json();
           } catch (e) {
-            console.warn('Error subiendo imágenes roomType (continuando sin imágenes):', e);
+            console.warn('Upload fallo', e);
           }
-
-          const { id: _tempId, ...roomTypeWithoutNumericId } = roomType as any;
-          const formData = {
-            ...roomTypeWithoutNumericId,
-            images: uploadedUrls,
-            hotelId: hotelId
-          };
-
-          console.log("Datos enviados al back: ", formData);
-          const response = await postRoomType(formData);
-          arrayOfSavedRoomTypes.push(response)
-
-        } catch (error) {
-          console.error(error);
-
-        } finally {
-          setSavedRoomTypes(prevRoomTypes => [...prevRoomTypes, ...arrayOfSavedRoomTypes])
-          setNonSavedRoomTypes([])
-          setIsSavedRoomTypesVisible(true)
-          setSubmitting(false);
         }
+        const { id: _tmp, ...rest } = d as any; // remove temporary id
+        const payload = { ...rest, images: uploaded, hotelId } as any;
+        const res = await postRoomType(payload);
+        saved.push(res);
+      } catch (e) {
+        console.error('Error guardando tipo', e);
       }
-
-      if (arrayOfSavedRoomTypes.length > 0) {
-        Swal.fire({
-          icon: "success",
-          title: "Tipos de habitación registradas exitosamente",
-          showConfirmButton: true,
-          timer: 4000,
-        });
-        if (arrayOfSavedRoomTypes.length > 0) {
-          // asigna primer id guardado para uso en creación de habitaciones
-          const first = arrayOfSavedRoomTypes[0] as any;
-            if (first?.id) setRoomTypeIdBeingCreated(String(first.id));
-        }
-        if (onRoomTypesSaved) onRoomTypesSaved(arrayOfSavedRoomTypes);
-      } else {
-        Swal.fire({
-          icon: "error",
-          title: "Ups...",
-          text: "Ha ocurrido un error",
-          timer: 4000,
-        });
-      }
+    }
+    if (saved.length) {
+      setSavedRoomTypes(r => [...r, ...saved]);
+      setDraftRoomTypes([]);
+      if (saved[0]?.id) setRoomTypeIdBeingCreated(String((saved[0] as any).id));
+      onRoomTypesSaved?.(saved);
+      Swal.fire({ icon: 'success', title: 'Tipos guardados', timer: 2200, showConfirmButton: false });
     } else {
-      router.push("/post-hotel")
+      Swal.fire({ icon: 'info', title: 'Nada guardado', timer: 1600, showConfirmButton: false });
     }
+    setSaving(false);
+    setActiveTab('list');
   };
-  const [selectedBuffers, setSelectedBuffers] = useState<Uint8Array[]>([])
-  const handleImagesSelection = async (event: React.ChangeEvent<HTMLInputElement>) => {
-    const files = event.target.files
-    if (files) {
-      const filesArray = Array.from(files)
-      for (let i = 0; i < filesArray.length; i++) {
-        const file = filesArray[i]
-        const arrayBuffer = await file.arrayBuffer()
-        const buffer = new Uint8Array(arrayBuffer)
 
-        setSelectedBuffers((prevFiles) => [...prevFiles, buffer])
-      }
-    }
+  if (!isAdmin) {
+    return (
+      <div className="flex items-center justify-center w-full bg-gray-100 min-h-[60vh] p-4">
+        <div className="max-w-md bg-white shadow-md rounded-md p-4 text-center">
+          <Image src="/logo.png" alt="Acceso Denegado" width={100} height={100} className="mb-4 mx-auto" />
+          <h1 className="text-2xl font-semibold mb-2">Acceso Denegado</h1>
+            <p className="mb-4">No tienes permiso para acceder a esta página.</p>
+            <Link href="/" className="btn-secondary">Regresar a la página principal</Link>
+        </div>
+      </div>
+    );
   }
 
-  useEffect(() => {
-    async function getDBRoomTypes(hotelId: string | string[] | undefined) {
-      const roomTypes = await getRoomTypesByHotelId(hotelId)
-      
-      setSavedRoomTypes(roomTypes)
-    }
-
-    getDBRoomTypes(hotelId)
-  }, [])
-
   return (
-    <div className="flex min-h-screen items-center justify-center">
-      {isAdmin ? (
-        <div className="flex w-full justify-center items-center">
-          <div className="w-max p-8">
-            <Formik initialValues={initialValues} onSubmit={handleSubmit}>
-              {({ isSubmitting, setFieldValue, values }) => (
-                <Form className="flex">
-                  <div className="flex justify-center w-1/2">
-                    <div className="w-8/12 flex flex-col gap-3 p-8">
+    <div className="flex min-h-screen items-start justify-center px-2 md:px-6">
+      <div className="w-full max-w-5xl mx-auto">
+        {/* Always show tabs regardless of suppressStandaloneNav */}
+        <div className="flex gap-2 mb-4 border-b justify-center items-center">
+          <button
+            type="button"
+            onClick={() => setActiveTab('add')}
+            className={`px-4 py-2 text-sm font-medium rounded-t-md border ${activeTab === 'add' ? 'bg-red-500 text-white border-red-500' : 'bg-white text-gray-600 hover:bg-gray-100 border-gray-300'}`}
+          >
+            Agregar
+          </button>
+          <button
+            type="button"
+            onClick={() => setActiveTab('list')}
+            className={`px-4 py-2 text-sm font-medium rounded-t-md border ${activeTab === 'list' ? 'bg-red-500 text-white border-red-500' : 'bg-white text-gray-600 hover:bg-gray-100 border-gray-300'}`}
+          >
+            Lista
+          </button>
+        </div>
+        <h2 className="text-2xl md:text-3xl font-bold text-center">Tipos de Habitación</h2>
 
-                      <div className="flex flex-col justify-center mb-8">
-                        <h1 className="text-4xl mb-2 pb-2 text-center font-bold">
-                          ¿Qué tipo de habitaciones tiene tu hotel?
-                        </h1>
-                        <p className="text-center">
-                          Asegúrate de seleccionar todos los tipos de habitaciones que
-                          tiene tu hotel antes de continuar
-                        </p>
-                      </div>
-                      <div className="formDiv flex-1 mr-2">
-                        <label htmlFor="name" className="formLabel">
-                          Tipo de habitación
-                        </label>
-                        <Field
-                          type="text"
-                          name="name"
-                          className="formInput"
-                        ></Field>
-                        <ErrorMessage
-                          name="name"
-                          component="div"
-                          className="text-red-600 text-sm"
-                        />
-                      </div>
-                      <div className="formDiv flex-1 mr-2">
-                        <label htmlFor="capacity" className="formLabel">
-                          ¿Para cuántas personas es?
-                        </label>
-                        <Field
-                          type="number"
-                          name="capacity"
-                          placeholder="0"
-                          className="formInput"
-                        />
-                        <ErrorMessage
-                          name="capacity"
-                          component="div"
-                          className="text-red-600 text-sm"
-                        />
-                      </div>
-                      <div className="formDiv flex-1 mr-2">
-                        <label htmlFor="totalBathrooms" className="formLabel">
-                          ¿Cuántos baños tiene?
-                        </label>
-                        <Field
-                          type="number"
-                          name="totalBathrooms"
-                          placeholder="0"
-                          className="formInput"
-                        />
-                        <ErrorMessage
-                          name="totalBathrooms"
-                          component="div"
-                          className="text-red-600 text-sm"
-                        />
-                      </div>
-                      <div className="formDiv flex-1 mr-2">
-                        <label htmlFor="totalBeds" className="formLabel">
-                          ¿Cuántas camas tiene?
-                        </label>
-                        <Field
-                          type="number"
-                          name="totalBeds"
-                          placeholder="0"
-                          className="formInput"
-                        />
-                        <ErrorMessage
-                          name="totalBeds"
-                          component="div"
-                          className="text-red-600 text-sm"
-                        />
-                      </div>
-                      <div className="formDiv flex-1 mr-2">
-                        <label htmlFor="images" className="formLabel">
-                          Imagen de la habitación
-                        </label>
-                        <input
-                          type="file"
-                          multiple
-                          name="images"
-                          onChange={handleImagesSelection}
-                        />
-                        <ErrorMessage
-                          name="images"
-                          component="div"
-                          className="text-red-500"
-                        />
-                      </div>
-                      <div className="formDiv flex-1 mr-2">
-                        <label htmlFor="price" className="formLabel">
-                          ¿Cuál es el precio por noche? (USD)
-                        </label>
-                        <Field
-                          type="number"
-                          name="price"
-                          placeholder="0"
-                          className="formInput"
-                        />
-                        <ErrorMessage
-                          name="price"
-                          component="div"
-                          className="text-red-600 text-sm"
-                        />
-                      </div>
-                      <div className="flex justify-end mr-2">
-                        <div>
-                          <div
-                            onClick={
-                              () => {
-                                setIsAdding(true)
-                                const roomTypeNameExists = savedRoomTypes.some(roomType => roomType.name === values.name) || nonSavedRoomTypes.some(roomType => roomType.name === values.name)
-                                if (roomTypeNameExists) {
-                                  Swal.fire({
-                                    icon: "error",
-                                    title: "Ups...",
-                                    text: "Ya existe un tipo de habitación con ese nombre.",
-                                    timer: 4000,
-                                  });
-                                  setIsAdding(false)
-                                  return
-                                }
-                                setNonSavedRoomTypes(prevRoomTypes => [...prevRoomTypes, {
-                                  id: roomTypeIdCounter,
-                                  ...values,
-                                  images: selectedBuffers.map(buffer => Array.from(buffer)) // Convert Uint8Array to array of numbers
-                                }])
-                                setRoomTypeIdCounter(prevId => prevId + 1)
-                                setSelectedBuffers([])
-                                setIsAdding(false)
-                              }
-                            }
-                            className="py-2 px-4 border w-max border-black rounded-md shadow-sm text-sm font-medium text-white bg-black hover:bg-gray-800 cursor-pointer"
-                          >
-                            <div className="flex items-center w-max">
-                              {isAdding ? (<h1 className="mr-1">Agregando...</h1>) : <h1 className="mr-1">Agregar</h1>}
-                              <Image
-                                src={createImage}
-                                alt="Crear"
-                                width={24}
-                                height={24}
-                              />
-                            </div>
-                          </div>
-                        </div>
-                      </div>
-                    </div>
+        {activeTab === 'add' && (
+          <>
+            {draftRoomTypes.length > 0 && (
+              <div className="flex flex-wrap gap-2 justify-center mt-3">
+                {draftRoomTypes.map(rt => (
+                  <span key={rt.id} className="px-3 py-1 rounded-full bg-gray-100 text-sm flex items-center gap-1">
+                    {rt.name}
+                    <button
+                      type="button"
+                      onClick={() => deleteDraft(rt.id)}
+                      className="text-red-500 hover:text-red-600 leading-none"
+                      aria-label="Eliminar borrador"
+                    >
+                      ×
+                    </button>
+                  </span>
+                ))}
+              </div>
+            )}
+            <Formik
+              initialValues={initialValues}
+              onSubmit={(vals, { resetForm }) => addDraft(vals, resetForm)}
+            >
+              <Form className="w-full max-w-xl mx-auto flex flex-col gap-4 p-4 md:p-6 bg-white rounded-md">
+                <div className="text-center mb-1">
+                  <h3 className="text-lg md:text-xl font-semibold">Agregar nuevo tipo</h3>
+                  <p className="text-xs text-gray-600">Llena los campos y presiona Agregar. Puedes agregar varios antes de guardar.</p>
+                </div>
+                <div>
+                  <label className="formLabel" htmlFor="name">Tipo de habitación</label>
+                  <Field name="name" type="text" className="formInput" />
+                  <ErrorMessage name="name" component="div" className="text-red-600 text-sm" />
+                </div>
+                <div className="grid grid-cols-2 gap-3">
+                  <div>
+                    <label className="formLabel" htmlFor="capacity">Capacidad</label>
+                    <Field name="capacity" type="number" className="formInput" />
+                    <ErrorMessage name="capacity" component="div" className="text-red-600 text-sm" />
                   </div>
-                  <div className="border border-r-gray-300"></div>
-                  <section className={`place-self-start p-8 w-1/2 transition-all duration-200 ease-in-out`}>
-                    <div className="mx-auto mb-5">
-                      <div className="flex justify-center items-center gap-8 mb-2 pb-2">
-                        <h1 className="text-4xl text-center font-bold w-max">Tipos de<br />Habitación</h1>
-                        <div className="w-max">
-                          <button
-                            disabled={isSavedRoomTypesVisible}
-                            className={`btn-secondary !text-md text-center flex items-center justify-center ${isSavedRoomTypesVisible && "!bg-[#e2293c96] hover:!bg-[#e2293c96] !cursor-default"}`}>
-                            {isSubmitting ? 'Guardando...' : 'Guardar'}
-                            <IconContext.Provider value={{ size: "1.8em", className: "ml-2" }}>
+                  <div>
+                    <label className="formLabel" htmlFor="totalBathrooms">Baños</label>
+                    <Field name="totalBathrooms" type="number" className="formInput" />
+                    <ErrorMessage name="totalBathrooms" component="div" className="text-red-600 text-sm" />
+                  </div>
+                  <div>
+                    <label className="formLabel" htmlFor="totalBeds">Camas</label>
+                    <Field name="totalBeds" type="number" className="formInput" />
+                    <ErrorMessage name="totalBeds" component="div" className="text-red-600 text-sm" />
+                  </div>
+                  <div>
+                    <label className="formLabel" htmlFor="price">Precio (USD)</label>
+                    <Field name="price" type="number" className="formInput" />
+                    <ErrorMessage name="price" component="div" className="text-red-600 text-sm" />
+                  </div>
+                </div>
+                <div>
+                  <label className="formLabel" htmlFor="images">Imágenes</label>
+                  <input type="file" multiple name="images" onChange={handleImagesSelection} />
+                </div>
+                <div className="flex justify-end gap-2">
+                  <button
+                    type="button"
+                    onClick={() => setActiveTab('list')}
+                    className="px-4 py-2 rounded-md border text-sm font-medium bg-white hover:bg-gray-100"
+                  >
+                    Ver Lista
+                  </button>
+                  <button
+                    type="submit"
+                    disabled={adding}
+                    className={`py-2 px-5 rounded-md text-white bg-black hover:bg-gray-800 text-sm font-medium ${adding && 'opacity-60 cursor-not-allowed'}`}
+                  >
+                    {adding ? 'Agregando...' : 'Agregar'}
+                  </button>
+                </div>
+              </Form>
+            </Formik>
+          </>
+        )}
 
-                              <CiSaveUp2 />
-                            </IconContext.Provider>
+        {activeTab === 'list' && (
+          <div className="mt-4">
+            <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4 mb-4">
+              <p className="text-sm text-gray-600 text-center md:text-left flex-1">
+                Revisa los tipos agregados. Presiona Guardar para persistirlos. (Guardados debajo)
+              </p>
+              <button
+                type="button"
+                disabled={!draftRoomTypes.length || saving}
+                onClick={persistAll}
+                className={`btn-secondary w-full md:w-auto flex items-center justify-center ${(!draftRoomTypes.length || saving) && '!bg-gray-300 hover:!bg-gray-300 cursor-not-allowed'}`}
+              >
+                {saving ? 'Guardando...' : 'Guardar'}
+                <IconContext.Provider value={{ size: '1.4em', className: 'ml-2' }}>
+                  <CiSaveUp2 />
+                </IconContext.Provider>
+              </button>
+            </div>
 
-                          </button>
-                        </div>
-                      </div>
-                      <p className="text-gray-600 text-center mb-3 w-4/6 mx-auto">Estos tipos de habitación no se han guardado. Presiona el botón <b>Guardar</b> de arriba para que se guarden y puedas editar sus cuartos.</p>
-                      <div className="flex justify-around mx-auto w-4/6">
-                        <div
-                          onClick={showNonSavedRoomTypes}
-                          className={`relative inline-block text-center bg-white border border-[#e93446] hover:bg-gray-100 py-2 px-4 rounded-md shadow-sm text-md font-medium cursor-pointer text-[#e93446] ${isNonSavedRoomTypesVisible && "before:absolute before:content-[''] before:h-0.5 before:left-4 before:bottom-1 before:bg-[#e93446] before:w-[calc(100%-30px)] before:rounded-sm"}`}>
-                          Sin Guardar
-                        </div>
-                        <div
-                          onClick={showSavedRoomTypes}
-                          className={`relative inline-block text-center bg-white border border-[#e93446] hover:bg-gray-100 py-2 px-4 rounded-md shadow-sm text-md font-medium cursor-pointer text-[#e93446] ${isSavedRoomTypesVisible && "before:absolute before:content-[''] before:h-0.5 before:left-4 before:bottom-1 before:bg-[#e93446] before:w-[calc(100%-30px)] before:rounded-sm"}`}>
-                          Guardados
-                        </div>
+            {!draftRoomTypes.length && !savedRoomTypes.length && (
+              <p className="text-center text-sm text-gray-500 py-8">
+                No has agregado ningún tipo todavía. Usa la pestaña Agregar.
+              </p>
+            )}
+
+            {draftRoomTypes.length > 0 && (
+              <div className="mb-8">
+                <h4 className="font-semibold mb-2 text-gray-800">Pendientes (no guardados)</h4>
+                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+                  {draftRoomTypes.map(rt => (
+                    <div key={rt.id} className="relative border rounded-md p-3 bg-white shadow-sm">
+                      <button
+                        onClick={() => deleteDraft(rt.id)}
+                        className="absolute top-2 right-2 text-red-500 hover:text-red-600 text-sm"
+                        aria-label="Eliminar"
+                      >
+                        ×
+                      </button>
+                      <h5 className="font-semibold mb-1 text-gray-900">{rt.name}</h5>
+                      <button
+                        type="button"
+                        aria-expanded={expandedId === rt.id}
+                        onClick={() => toggleExpand(rt.id)}
+                        className="text-xs text-gray-600 flex items-center gap-1 mb-2 focus:outline-none focus:ring-2 focus:ring-red-400 rounded"
+                      >
+                        Ver detalles <FaArrowDown className={`transition-transform duration-300 ${expandedId === rt.id ? 'rotate-180' : ''}`} />
+                      </button>
+                      <div className={`text-xs space-y-1 overflow-hidden transition-[max-height,opacity] duration-300 ease-in-out will-change-[max-height] ${expandedId === rt.id ? 'max-h-48 opacity-100' : 'max-h-0 opacity-0'}`}>
+                        <p><b>Capacidad:</b> {rt.capacity}</p>
+                        <p><b>Baños:</b> {rt.totalBathrooms}</p>
+                        <p><b>Camas:</b> {rt.totalBeds}</p>
+                        <p><b>Precio:</b> ${rt.price}</p>
                       </div>
                     </div>
-                    {isNonSavedRoomTypesVisible ?
-                      <div>
-                        {
-                          nonSavedRoomTypes.length > 0 ?
+                  ))}
+                </div>
+              </div>
+            )}
 
-                            <div className="flex justify-around w-5/6 gap-2 flex-wrap mx-auto">
-                              {nonSavedRoomTypes.map(roomType => (
-                                <div key={roomType.id} className="w-max relative">
-
-                                  <div className="-z-20 flex flex-col mt-5 gap-1 w-max border p-2 rounded-lg border-gray-600" key={roomType.name}>
-                                    <div onClick={() => {
-                                      handleDeleteNonSavedRoomType(roomType.id)
-                                    }} className="absolute top-7 right-2 cursor-pointer">
-                                      <IconContext.Provider value={{ color: "#f8263a", size: "1.3em" }}>
-                                        <MdDelete />
-                                      </IconContext.Provider>
-                                    </div>
-                                    <p className="font-bold text-lg text-gray-900 select-none">{roomType.name}</p>
-                                    <div
-                                      onClick={() => toggleRoomTypeDetailsId(roomType.id)}
-                                      className="w-32 justify-start items-center flex gap-1 cursor-pointer"
-                                    >
-                                      <p className="text-gray-600 text-sm select-none">Ver detalles</p>
-                                      <IconContext.Provider value={{ size: "1em", className: `ml-1 text-gray-500 transition-rotate duration-300 ease-in-out ${visibleId === roomType.id ? "-rotate-180" : "rotate-0"}` }}>
-
-                                        <FaArrowDown />
-                                      </IconContext.Provider>
-
-
-                                    </div>
-                                  </div>
-                                  <div className={`bg-gray-100 z-20 absolute rounded-md transition-all border border-gray-500 shadow-lg p-2 w-max duration-300 ease-in-out ${visibleId === roomType.id ? `top-[110%] opacity-100 pointer-events-auto select-none` : "top-[100%] opacity-0 pointer-events-none"}`}>
-                                    <p><b>Tipo de habitación:</b> {roomType.name}</p>
-                                    <p><b>Capacidad:</b> {roomType.capacity}</p>
-                                    <p><b>Baños:</b> {roomType.totalBathrooms}</p>
-                                    <p><b>Camas:</b> {roomType.totalBeds}</p>
-                                    <p><b>Precio por noche (USD):</b> {roomType.price}</p>
-                                  </div>
-                                </div>
-                              ))}
-                            </div> :
-                            <div className="mt-14">
-                              <p className="text-center">No has creado ningún tipo de habitación todavía.</p>
-                            </div>
-                        }
-                      </div> :
-                      <div>
-                        {
-                          savedRoomTypes.length > 0 ?
-
-                            <div className="flex justify-around w-5/6 gap-2 flex-wrap mx-auto">
-                              {savedRoomTypes.map(roomType => (
-                                <div key={roomType.id} className="w-max relative">
-
-                                  <div className="-z-20 flex flex-col mt-5 gap-1 w-max border p-2 rounded-lg border-gray-600" key={roomType.id}>
-                                    <p className="font-bold text-lg text-gray-900 select-none">{roomType.name}</p>
-                                    <div
-                                      onClick={() => toggleRoomTypeDetailsId(roomType.id)}
-                                      className="w-32 justify-start items-center flex gap-1 cursor-pointer"
-                                    >
-                                      <p className="text-gray-600 text-sm select-none">Ver detalles</p>
-                                      <IconContext.Provider value={{ size: "1em", className: `ml-1 text-gray-500 transition-rotate duration-300 ease-in-out ${visibleId === roomType.id ? "-rotate-180" : "rotate-0"}` }}>
-
-                                        <FaArrowDown />
-                                      </IconContext.Provider>
-
-
-                                    </div>
-                                  </div>
-                                  <div className={`bg-gray-100 z-20 absolute rounded-md transition-all border border-gray-500 shadow-lg p-2 w-max duration-300 ease-in-out ${visibleId === roomType.id ? `top-[110%] opacity-100 pointer-events-auto select-none` : "top-[100%] opacity-0 pointer-events-none"}`}>
-                                    <p><b>Tipo de habitación:</b> {roomType.name}</p>
-                                    <p><b>Capacidad:</b> {roomType.capacity}</p>
-                                    <p><b>Baños:</b> {roomType.totalBathrooms}</p>
-                                    <p><b>Camas:</b> {roomType.totalBeds}</p>
-                                    <p><b>Precio por noche (USD):</b> {roomType.price}</p>
-                                  </div>
-                                </div>
-                              ))}
-                            </div> :
-                            <div className="mt-14">
-                              <p className="text-center">No has guardado ningún tipo de habitación todavía.</p>
-                            </div>
-                        }
+            {savedRoomTypes.length > 0 && (
+              <div>
+                <h4 className="font-semibold mb-2 text-gray-800">Guardados</h4>
+                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+                  {savedRoomTypes.map(rt => (
+                    <div key={rt.id} className="border rounded-md p-3 bg-white shadow-sm">
+                      <h5 className="font-semibold mb-1 text-gray-900">{rt.name}</h5>
+                      <div className="text-xs space-y-1">
+                        <p><b>Capacidad:</b> {rt.capacity}</p>
+                        <p><b>Baños:</b> {rt.totalBathrooms}</p>
+                        <p><b>Camas:</b> {rt.totalBeds}</p>
+                        <p><b>Precio:</b> {rt.price}</p>
                       </div>
-                    }
-                  </section>
-                </Form>
-              )}
-            </Formik>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
           </div>
-        </div>
-      ) : (
-        <div className="flex items-center justify-center w-full bg-gray-100">
-          <div className=" max-w-md bg-white shadow-md rounded-md p-4 text-center">
-            <Image
-              src="/logo.png"
-              alt="Acceso Denegado"
-              width={100}
-              height={100}
-              className="mb-4 mx-auto"
-            />
-            <h1 className="text-2xl font-semibold mb-2">Acceso Denegado</h1>
-            <p className="mb-4">
-              No tienes permiso para acceder a esta página.
-            </p>
-            <Link href="/" className="btn-secondary">
-              Regresar a la página principal
-            </Link>
-          </div>
-        </div>
-      )}
-
+        )}
+      </div>
     </div>
   );
 }

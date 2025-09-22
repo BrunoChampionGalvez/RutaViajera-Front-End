@@ -21,6 +21,11 @@ export default function HotelCreationWizard({ onFinished }: HotelCreationWizardP
   const [createdHotel, setCreatedHotel] = useState<IAdminHotel | null>(null);
   const [savedRoomTypes, setSavedRoomTypes] = useState<Partial<IRoomTypeRegister>[]>([]);
 
+  // Local (unsaved) draft state so inputs persist when navigating backwards
+  const [hotelDraft, setHotelDraft] = useState<any>({});
+  const [roomTypesDraft, setRoomTypesDraft] = useState<Partial<IRoomTypeRegister>[]>([]);
+  const [pendingRoomsDraft, setPendingRoomsDraft] = useState<Record<string,string[]>>({});
+
   const goNext = () => {
     setCurrentStep(prev => {
       const idx = steps.indexOf(prev);
@@ -33,6 +38,9 @@ export default function HotelCreationWizard({ onFinished }: HotelCreationWizardP
     setCurrentStep("Hotel");
     setCreatedHotel(null);
     setSavedRoomTypes([]);
+    setHotelDraft({});
+    setRoomTypesDraft([]);
+  setPendingRoomsDraft({});
   };
 
   const canAccessStep = (step: Step) => {
@@ -45,34 +53,61 @@ export default function HotelCreationWizard({ onFinished }: HotelCreationWizardP
   const renderStep = () => {
     switch (currentStep) {
       case "Hotel":
-        return <HotelRegister suppressRedirect onHotelCreated={(hotel) => { setCreatedHotel(hotel); goNext(); }} />;
+        return (
+          <HotelRegister
+            suppressRedirect
+            onHotelCreated={(hotel) => { setCreatedHotel(hotel); goNext(); }}
+            // Draft hydration props (component will ignore if not implemented yet)
+            // @ts-ignore progressive enhancement
+            draft={hotelDraft}
+            // @ts-ignore
+            onDraftChange={(partial: any) => setHotelDraft((d: any) => ({ ...d, ...partial }))}
+          />
+        );
       case "Tipos":
-        return <TypesRegister suppressStandaloneNav hotelId={createdHotel?.id} onRoomTypesSaved={(rts) => { setSavedRoomTypes(rts); goNext(); }} />;
+        return (
+          <TypesRegister
+            suppressStandaloneNav
+            hotelId={createdHotel?.id}
+            onRoomTypesSaved={(rts) => { setSavedRoomTypes(rts); goNext(); }}
+            // @ts-ignore
+            draftList={roomTypesDraft}
+            // @ts-ignore
+            onDraftListChange={(list: Partial<IRoomTypeRegister>[]) => setRoomTypesDraft(list)}
+          />
+        );
       case "Habitaciones":
         return (
           <RoomNumberForm
             hotelIdOverride={createdHotel?.id}
             onRoomsCreated={() => {
-              // Cierra el asistente automáticamente cuando todas las habitaciones del batch se crean con éxito
               if (onFinished) onFinished();
             }}
+            // @ts-ignore new grouped draft
+            draftRooms={pendingRoomsDraft}
+            // @ts-ignore
+            onDraftRoomsChange={(map: Record<string,string[]>) => setPendingRoomsDraft(map)}
           />
-        ); // Usa context existente para roomType actual; ahora también recibe override y callback
+        );
       default:
         return null;
     }
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex flex-col bg-white overflow-y-auto">
+    // Positioned below the global top navbar (h-16) and to the right of the desktop sidebar (md:w-40 lg:w-44)
+    // On mobile it still spans full width under the navbar.
+    <div
+      className="fixed left-0 right-0 top-16 bottom-0 md:left-40 lg:left-44 z-[95] flex flex-col bg-white shadow-xl border-l md:rounded-tl-xl overflow-hidden"
+    >
       <div className="flex items-center justify-between px-6 py-4 border-b">
-        <h2 className="text-2xl font-bold">Publicar Hotel - Asistente</h2>
+        <h2 className="text-2xl font-bold">Publicar Hotel</h2>
         <div className="flex gap-2">
           <button onClick={reset} className="text-sm px-3 py-1 border rounded hover:bg-gray-100">Reiniciar</button>
           <button onClick={onFinished} className="text-sm px-3 py-1 border rounded hover:bg-gray-100">Cerrar</button>
         </div>
       </div>
-      <div className="px-6 py-3 flex gap-4">
+      <div className="px-6 py-3 flex gap-4 overflow-x-auto">
         {steps.map(step => {
           const active = step === currentStep;
           const enabled = canAccessStep(step);
@@ -88,7 +123,7 @@ export default function HotelCreationWizard({ onFinished }: HotelCreationWizardP
           );
         })}
       </div>
-      <div className="p-6">
+      <div className="p-6 flex-1 overflow-y-auto">
         {renderStep()}
       </div>
       {currentStep === "Habitaciones" && (

@@ -17,9 +17,12 @@ import { HotelContext } from "@/context/hotelContext";
 interface HotelRegisterProps {
   onHotelCreated?: (hotel: any) => void; // se tipará mejor luego con IHotel
   suppressRedirect?: boolean; // si true no hace push automático
+  // Draft persistence (optional)
+  draft?: Partial<IHotelRegisterInitialValues> & { servicesString?: string };
+  onDraftChange?: (partial: Partial<IHotelRegisterInitialValues> & { servicesString?: string }) => void;
 }
 
-const HotelRegister: React.FC<HotelRegisterProps> = ({ onHotelCreated, suppressRedirect = false }) => {
+const HotelRegister: React.FC<HotelRegisterProps> = ({ onHotelCreated, suppressRedirect = false, draft, onDraftChange }) => {
   // NOTE: Se eliminó la dependencia de isAdmin para no bloquear la creación si el flag local está desincronizado.
   // El backend (NestJS) tiene RolesGuard y devolverá 403 si realmente el usuario no posee el rol.
   const { user, addNewHotel } = useContext(UserContext);
@@ -31,17 +34,17 @@ const HotelRegister: React.FC<HotelRegisterProps> = ({ onHotelCreated, suppressR
   const { mapCenter, marker } = useGoogleMapsData(hotelLocation);
 
   const initialValues: IHotelRegisterInitialValues = {
-    name: "",
-    description: "",
-    email: "",
-    country: "",
-    city: "",
-    address: "",
-    location: [0, 0],
-    totalRooms: 0,
-    services: [],
-    rating: 1,
-    images: [] as File[],
+    name: draft?.name || "",
+    description: draft?.description || "",
+    email: draft?.email || "",
+    country: draft?.country || "",
+    city: draft?.city || "",
+    address: draft?.address || "",
+    location: draft?.location || [0, 0],
+    totalRooms: draft?.totalRooms || 0,
+    services: draft?.services || [],
+    rating: draft?.rating || 1,
+    images: (draft?.images as File[]) || [] as File[],
     hotel_admin_id: user?.id || "",
   };
 
@@ -357,6 +360,7 @@ const HotelRegister: React.FC<HotelRegisterProps> = ({ onHotelCreated, suppressR
               </h1>
             </div>
             <Formik
+              enableReinitialize
               initialValues={initialValues}
               validate={validatePostHotel}
               onSubmit={handleSubmit}
@@ -372,6 +376,7 @@ const HotelRegister: React.FC<HotelRegisterProps> = ({ onHotelCreated, suppressR
                       name="name"
                       className="formInput"
                       placeholder="Nombre del hotel"
+                      onChange={(e: any) => { setFieldValue('name', e.target.value); onDraftChange?.({ name: e.target.value }); }}
                     />
                     <ErrorMessage
                       name="name"
@@ -388,6 +393,7 @@ const HotelRegister: React.FC<HotelRegisterProps> = ({ onHotelCreated, suppressR
                       name="description"
                       className="formInput"
                       placeholder="Descripción del hotel"
+                      onChange={(e: any) => { setFieldValue('description', e.target.value); onDraftChange?.({ description: e.target.value }); }}
                     />
                     <ErrorMessage
                       name="description"
@@ -404,6 +410,7 @@ const HotelRegister: React.FC<HotelRegisterProps> = ({ onHotelCreated, suppressR
                       name="email"
                       className="formInput"
                       placeholder="Correo electrónico"
+                      onChange={(e: any) => { setFieldValue('email', e.target.value); onDraftChange?.({ email: e.target.value }); }}
                     />
                     <ErrorMessage
                       name="email"
@@ -421,6 +428,7 @@ const HotelRegister: React.FC<HotelRegisterProps> = ({ onHotelCreated, suppressR
                       name="country"
                       className="formInput"
                       placeholder="País"
+                      onChange={(e: any) => { setFieldValue('country', e.target.value); onDraftChange?.({ country: e.target.value }); }}
                     >
                       <option value="">Selecciona un país</option>
                       {countryOptions.map((country, index) => (
@@ -444,6 +452,7 @@ const HotelRegister: React.FC<HotelRegisterProps> = ({ onHotelCreated, suppressR
                       name="city"
                       className="formInput"
                       placeholder="Ciudad"
+                      onChange={(e: any) => { setFieldValue('city', e.target.value); onDraftChange?.({ city: e.target.value }); }}
                     />
                     <ErrorMessage
                       name="city"
@@ -466,6 +475,7 @@ const HotelRegister: React.FC<HotelRegisterProps> = ({ onHotelCreated, suppressR
                         const city = values.city;
                         setHotelLocation({ country, city, address });
                         setFieldValue("address", address);
+                        onDraftChange?.({ address });
                       }}
                     />
                     <ErrorMessage
@@ -521,7 +531,9 @@ const HotelRegister: React.FC<HotelRegisterProps> = ({ onHotelCreated, suppressR
                       placeholder="Servicios"
                       value={values.services.join(",")}
                       onChange={(e: React.ChangeEvent<HTMLInputElement>) => {
-                        setFieldValue("services", e.target.value.split(","));
+                        const list = e.target.value.split(",");
+                        setFieldValue("services", list);
+                        onDraftChange?.({ services: list });
                       }}
                     />
                     <ErrorMessage
@@ -539,6 +551,7 @@ const HotelRegister: React.FC<HotelRegisterProps> = ({ onHotelCreated, suppressR
                       name="totalRooms"
                       className="formInput"
                       placeholder="Total de Cuartos"
+                      onChange={(e: any) => { const v = Number(e.target.value); setFieldValue('totalRooms', v); onDraftChange?.({ totalRooms: v }); }}
                     />
                   </div>
                   <div className="formDiv flex-1 mr-2">

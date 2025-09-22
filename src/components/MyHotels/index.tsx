@@ -8,7 +8,7 @@ import { Swiper, SwiperSlide } from "swiper/react";
 import "swiper/css";
 import "swiper/css/pagination";
 import "swiper/css/free-mode";
-import { FreeMode, Pagination } from "swiper/modules";
+import { Pagination } from "swiper/modules";
 // import EditHotelModal from "../EditHotelModal"; // replaced by HotelFullEditor
 import HotelFullEditor from "../HotelFullEditor";
 import { IAdminHotel } from "@/interfaces";
@@ -66,7 +66,7 @@ function MyHotels() {
   };
 
   return (
-    <div className="flex flex-col h-full w-full">
+  <div className="flex flex-col h-full overflow-x-hidden w-full">
       {isModalOpen && selectedHotel && (
         <HotelFullEditor
           hotel={selectedHotel}
@@ -76,48 +76,45 @@ function MyHotels() {
           refreshHotels={() => getHotelsByAdmin(user?.id || "")}
         />
       )}
-      <div className="flex justify-between items-center mx-4 py-4 bg-white/90 backdrop-blur supports-[backdrop-filter]:bg-white/70 sticky top-0 z-20 border-b">
-        <div className="flex-1">
-          <h1 className="text-4xl font-semibold">Mis hoteles</h1>
-        </div>
-        <div className="flex justify-end">
-          <button
-            onClick={() => setIsWizardOpen(true)}
-            className="flex px-4 py-3 text-white bg-red-500 hover:bg-red-600 focus:bg-red-700 rounded-md"
-          >
-            <Image
-              src={'/create2.png'}
-              alt='Crear'
-              width={24}
-              height={24}
-              className='mr-2'
-            />
-            Publicar hotel
-          </button>
-        </div>
+      <div className="flex justify-between gap-3 items-center mx-2 py-4 bg-white/90 backdrop-blur supports-[backdrop-filter]:bg-white/70 sticky top-0 z-30 border-b">
+        <h1 className="text-2xl sm:text-4xl font-semibold flex-1">Mis hoteles</h1>
+        <button
+          onClick={() => setIsWizardOpen(true)}
+          className="flex px-3 sm:px-4 py-2 sm:py-3 text-white bg-red-500 hover:bg-red-600 active:bg-red-700 rounded-md shadow text-sm sm:text-base items-center"
+        >
+          <Image
+            src={'/create2.png'}
+            alt='Crear'
+            width={20}
+            height={20}
+            className='mr-2'
+          />
+          <span className="hidden xs:inline sm:inline">Publicar hotel</span>
+          <span className="sm:hidden">Publicar</span>
+        </button>
       </div>
       {isWizardOpen && (
         <HotelCreationWizard onFinished={() => setIsWizardOpen(false)} />
       )}
-      <div className="p-6 flex-1 overflow-hidden">
-        <div className="w-full">
+  <div className="px-2 sm:px-4 md:px-6 pt-4 flex-1 w-full overflow-x-hidden">
+    <div className="w-full mx-auto max-w-[1400px] md:max-w-[1300px]">
           <Swiper
-            spaceBetween={20}
+            spaceBetween={8}
             slidesPerView={1}
             breakpoints={{
-              640: { slidesPerView: 1, spaceBetween: 20 },
-              900: { slidesPerView: 2, spaceBetween: 24 },
-              1280: { slidesPerView: 3, spaceBetween: 24 },
+              640: { slidesPerView: 1.1, spaceBetween: 14 },
+              900: { slidesPerView: 2, spaceBetween: 18 },
+              1280: { slidesPerView: 3, spaceBetween: 20 },
             }}
-            freeMode
+            centeredSlides={false}
             pagination={{ clickable: true }}
-            modules={[FreeMode, Pagination]}
-            className="w-full"
+            modules={[Pagination]}
+            className="w-full myhotels-swiper"
           >
           {hotels && hotels.length > 0 ? (
             hotels.map((hotel) => (
-              <SwiperSlide key={hotel.id} className="w-full max-w-xs">
-                <div className="overflow-hidden rounded-lg shadow-lg mb-4">
+              <SwiperSlide key={hotel.id} className="w-full flex justify-center px-1 md:px-2">
+                <div className="hotel-card overflow-hidden rounded-lg shadow-md hover:shadow-lg transition-shadow mb-8 bg-white flex flex-col flex-1 w-full max-w-[420px] mx-auto border border-gray-100">
                   <div>
                     {hotel.images && hotel.images.length > 0 ? (
                       <div className="">
@@ -131,12 +128,12 @@ function MyHotels() {
                         />
                       </div>
                     ) : (
-                      <div className="flex justify-center items-center">
-                        <p className="">No hay imágenes disponibles.</p>
+                      <div className="flex justify-center items-center h-48 bg-gray-50 text-gray-500 text-sm">
+                        <p>No hay imágenes disponibles.</p>
                       </div>
                     )}
                   </div>
-                  <div className="p-2 md:p-4 flex flex-col space-y-1">
+                  <div className="p-2 md:p-4 flex flex-col space-y-1 flex-1">
                     <div>
                       <h2 className="font-bold text-xl text-center mb-2">
                         {hotel.name}
@@ -156,10 +153,9 @@ function MyHotels() {
                         Servicios: {hotel.services.join(", ")}
                       </p>
                     </div>
-                    <div className="flex justify-end">
+                    <div className="flex justify-end mt-auto">
                       <button
-                        className="flex text-white items-center px-3
-                      py-2 mt-2 rounded-md border-2 border-gray-500 hover:bg-gray-500 invert hover:invert-0 duration-200 focus:scale-95"
+                        className="flex text-white items-center px-3 py-2 mt-2 rounded-md border-2 border-gray-500 hover:bg-gray-500 invert hover:invert-0 duration-200 focus:scale-95"
                         onClick={() => handleEditClick(hotel)}
                       >
                         <Image
@@ -182,6 +178,9 @@ function MyHotels() {
             </div>
           )}
           </Swiper>
+          <div className="w-full flex justify-center mt-1 pb-2 relative pointer-events-none">
+            {/* Swiper injects pagination absolutely; this wrapper ensures visual centering context */}
+          </div>
         </div>
       </div>
     </div>

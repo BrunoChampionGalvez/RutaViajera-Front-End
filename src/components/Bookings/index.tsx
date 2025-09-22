@@ -182,11 +182,6 @@ function Bookings() {
               <span>Cargando reservas...</span>
             </div>
           )}
-          {error && (
-            <div className="bg-red-50 border border-red-200 text-red-700 p-3 rounded mb-4">
-              {error}
-            </div>
-          )}
           {!loading && bookings.length === 0 && !error && (
             <div className="bg-white border rounded p-6 text-center text-gray-600">
               No tienes reservas aún.

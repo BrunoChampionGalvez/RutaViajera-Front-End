@@ -12,15 +12,17 @@ import Swal from "sweetalert2";
 interface RoomNumberFormProps {
   onRoomsCreated?: () => void;
   hotelIdOverride?: string; // permitir pasar hotelId explícito
+  draftRooms?: Record<string,string[]>; // map roomsTypeId -> pending numbers
+  onDraftRoomsChange?: (byType: Record<string,string[]>) => void;
 }
 
-export default function RoomNumberForm({ onRoomsCreated, hotelIdOverride }: RoomNumberFormProps) {
+export default function RoomNumberForm({ onRoomsCreated, hotelIdOverride, draftRooms, onDraftRoomsChange }: RoomNumberFormProps) {
   const { isAdmin } = useContext(UserContext)
   const { hotelBeingCreated, roomTypeIdBeingCreated } = useContext(HotelContext)
   const [roomTypes, setRoomTypes] = useState<IRoomType[]>([]);
   const [selectedHotelId, setSelectedHotelId] = useState<string>("");
-  const [rooms, setRooms] = useState<string[]>([])
-  const [showRooms, setShowRooms] = useState<boolean>(false);
+  const [roomsByType, setRoomsByType] = useState<Record<string,string[]>>(draftRooms || {})
+  const [showRooms, setShowRooms] = useState<boolean>(true);
   const [selectedRoomTypeId, setSelectedRoomTypeId] = useState<string>("");
   const [adding, setAdding] = useState<boolean>(false);
   const [creatingBatch, setCreatingBatch] = useState<boolean>(false);
@@ -70,12 +72,17 @@ export default function RoomNumberForm({ onRoomsCreated, hotelIdOverride }: Room
     }
     const roomNumber = values.roomNumber.trim();
     if (!roomNumber) return;
-    if (rooms.includes(roomNumber)) {
+    const list = roomsByType[effectiveRoomTypeId] || [];
+    if (list.includes(roomNumber)) {
       Swal.fire({ icon: 'info', title: 'Número duplicado', text: 'Ya añadiste ese número.', timer: 2000 });
       return;
     }
     setAdding(true);
-    setRooms(prev => [...prev, roomNumber]);
+    setRoomsByType(prev => {
+      const updated = { ...prev, [effectiveRoomTypeId]: [...(prev[effectiveRoomTypeId]||[]), roomNumber] };
+      onDraftRoomsChange?.(updated);
+      return updated;
+    });
     resetForm();
     setAdding(false);
     setSubmitting(false);
@@ -147,43 +154,48 @@ export default function RoomNumberForm({ onRoomsCreated, hotelIdOverride }: Room
                     </div>
                   </button>
                 </div>
-                {rooms.length > 0 && (
+                {Object.values(roomsByType).some(arr=>arr.length>0) && (
                   <div className="flex flex-col gap-3 w-full mt-4">
                     <div className="flex items-center justify-between">
-                      <button type="button" className="text-sm text-gray-600 underline"
-                        onClick={() => setShowRooms(prev => !prev)}>
-                        {showRooms ? 'Ocultar' : 'Ver'} {rooms.length} habitaciones
-                      </button>
+                      <span className="text-sm text-gray-700">Pendientes totales: {Object.values(roomsByType).reduce((a,b)=>a+b.length,0)}</span>
                       <button
                         type="button"
                         disabled={creatingBatch}
                         className="btn-secondary flex items-center justify-center"
                         onClick={async () => {
-                          if (!selectedRoomTypeId && !roomTypeIdBeingCreated) {
-                            Swal.fire({ icon: 'warning', title: 'Selecciona un tipo', timer: 2000 });
-                            return;
-                          }
+                          if (Object.keys(roomsByType).length===0) return;
                           setCreatingBatch(true);
-                          const targetRoomType = selectedRoomTypeId || roomTypeIdBeingCreated;
-                          try {
-                            const { successes, failures } = await postRoom(rooms, targetRoomType);
-                            setLastBatchFailures(failures);
-                            if (failures.length === 0) {
-                              Swal.fire({ icon: 'success', title: 'Habitaciones creadas', timer: 2000 });
-                              if (onRoomsCreated) onRoomsCreated();
-                              setRooms([]);
-                              setLastBatchFailures([]);
-                            } else if (successes.length > 0) {
-                              Swal.fire({ icon: 'info', title: 'Parcial', html: `${successes.length} creadas, ${failures.length} fallidas`, timer: 3000 });
-                              setRooms(failures.map(f => f.roomNumber)); // deja pendientes las fallidas
-                            } else {
-                              Swal.fire({ icon: 'error', title: 'Error al crear habitaciones', html: `${failures.length} fallidas`, timer: 3000 });
+                          const summary: { typeId: string; name: string; successes: number; failures: number; failedRooms: string[] }[] = [];
+                          let anyFailure = false;
+                          const newState: Record<string,string[]> = {};
+                          for (const [rtId, list] of Object.entries(roomsByType)) {
+                            if (list.length === 0) continue;
+                            try {
+                              const { successes, failures } = await postRoom(list, rtId);
+                              const rtName = roomTypes.find(r=>String(r.id)===rtId)?.name || rtId;
+                              summary.push({ typeId: rtId, name: rtName, successes: successes.length, failures: failures.length, failedRooms: failures.map(f=>f.roomNumber) });
+                              if (failures.length>0) {
+                                anyFailure = true;
+                                newState[rtId] = failures.map(f=>f.roomNumber);
+                              }
+                            } catch (e) {
+                              anyFailure = true;
+                              const rtName = roomTypes.find(r=>String(r.id)===rtId)?.name || rtId;
+                              summary.push({ typeId: rtId, name: rtName, successes: 0, failures: list.length, failedRooms: list });
+                              newState[rtId] = list;
                             }
-                          } catch (e) {
-                            Swal.fire({ icon: 'error', title: 'Error creando habitaciones', timer: 2500 });
-                          } finally {
-                            setCreatingBatch(false);
                           }
+                          setRoomsByType(newState);
+                          onDraftRoomsChange?.(newState);
+                          setCreatingBatch(false);
+                          const lines = summary.map(s=>`<b>${s.name}</b>: ${s.successes} ${s.failedRooms.length?` (${s.failedRooms.slice(0,5).join(', ')}${s.failedRooms.length>5?'...':''})`:''}`).join('<br/>');
+                          Swal.fire({
+                            icon: anyFailure ? 'info' : 'success',
+                            title: anyFailure ? 'Resultado parcial' : 'Habitaciones creadas',
+                            html: lines || 'Nada que crear',
+                            width: 600,
+                          });
+                          if (!anyFailure && onRoomsCreated) onRoomsCreated();
                         }}
                       >
                         {creatingBatch ? 'Creando...' : 'Crear Habitaciones'}
@@ -191,13 +203,16 @@ export default function RoomNumberForm({ onRoomsCreated, hotelIdOverride }: Room
                     </div>
                     {showRooms && (
                       <ul className="border rounded-md p-2 max-h-48 overflow-y-auto space-y-1 text-sm">
-                        {rooms.map(r => (
-                          <li key={r} className="flex items-center justify-between bg-gray-50 px-2 py-1 rounded">
-                            <span>{r}</span>
-                            <button type="button" className="text-xs text-red-500 hover:text-red-700"
-                              onClick={() => setRooms(prev => prev.filter(x => x !== r))}>Eliminar</button>
-                          </li>
-                        ))}
+                        {Object.entries(roomsByType).flatMap(([rtId, list]) => {
+                          const rtName = roomTypes.find(r=>String(r.id)===rtId)?.name || rtId;
+                          return list.map(r => (
+                            <li key={rtId+':'+r} className="flex items-center justify-between bg-gray-50 px-2 py-1 rounded">
+                              <span className="flex flex-col"><b>{r}</b><span className="text-[10px] text-gray-500">{rtName}</span></span>
+                              <button type="button" className="text-xs text-red-500 hover:text-red-700"
+                                onClick={() => setRoomsByType(prev => { const filtered = (prev[rtId]||[]).filter(x=>x!==r); const clone = { ...prev, [rtId]: filtered }; if(filtered.length===0) delete clone[rtId]; onDraftRoomsChange?.(clone); return clone; })}>Eliminar</button>
+                            </li>
+                          ));
+                        })}
                       </ul>
                     )}
                     {lastBatchFailures.length > 0 && (

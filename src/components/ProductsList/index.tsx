@@ -4,6 +4,7 @@ import { useState, useEffect, useContext, useRef } from "react";
 import ProductCard from "../ProductCard";
 import { IHotelDetail, IProductsListProps } from "@/interfaces";
 import { HotelContext } from "@/context/hotelContext";
+import { UserContext } from "@/context/userContext";
 import ProductCardSkeleton from "@/components/ProductCardSkeleton";
 
 function ProductsList({ searchQuery, queryParams }: IProductsListProps) {
@@ -13,6 +14,7 @@ function ProductsList({ searchQuery, queryParams }: IProductsListProps) {
   const [loading, setLoading] = useState(true);
   const firstLoadRef = useRef(true);
   const { fetchHotels, fetchHotelsBySearch, fetchHotelsByFilters } = useContext(HotelContext);
+  const { user } = useContext(UserContext);
 
   const handleNextPage = () => {
     setCurrentPage(currentPage + 1);
@@ -31,12 +33,41 @@ function ProductsList({ searchQuery, queryParams }: IProductsListProps) {
 
     const run = async () => {
       try {
-        let baseData: IHotelDetail[] = [];
+  let baseData: IHotelDetail[] = [];
         // Fetch base list (filters have precedence over plain list)
         if (queryParams) {
           baseData = await fetchHotelsByFilters(queryParams) as IHotelDetail[];
         } else {
           baseData = await fetchHotels() as IHotelDetail[];
+        }
+        // Merge in hotels recently created by a hotelier that might not yet be part of public listing (optimistic)
+        // Only if user has hotels in context and they are not marked deleted.
+        if (user?.hotels && Array.isArray(user.hotels)) {
+          const existingIds = new Set(baseData.map(h => h.id));
+          const extra = (user.hotels as any[])
+            .filter(h => h && !h.isDeleted && !existingIds.has(h.id))
+            .map(h => ({
+              // Map minimal admin hotel shape to IHotelDetail fallback
+              id: h.id,
+              name: h.name,
+              description: h.description || '',
+              email: h.email || '',
+              price: (h as any).price || 0,
+              country: h.country || '',
+              city: h.city || '',
+              address: h.address || '',
+              location: h.location || [0,0],
+              totalRooms: h.totalRooms || 0,
+              services: h.services || [],
+              rating: (h.rating ?? 0).toString(),
+              reviews: h.reviews || [],
+              images: h.images || [],
+              isDeleted: false,
+              roomstype: (h.roomstype || [])
+            } as IHotelDetail));
+          if (extra.length) {
+            baseData = [...baseData, ...extra];
+          }
         }
 
         // Local flexible name search (accent / case insensitive, multi-token, partial)
@@ -89,7 +120,7 @@ function ProductsList({ searchQuery, queryParams }: IProductsListProps) {
     };
     run();
     return () => { active = false; };
-  }, [searchQuery, queryParams, fetchHotels, fetchHotelsBySearch, fetchHotelsByFilters]);
+  }, [searchQuery, queryParams, fetchHotels, fetchHotelsBySearch, fetchHotelsByFilters, user?.hotels]);
 
   const paginatedHotels = Array.isArray(filteredHotels)
     ? filteredHotels.slice(
