@@ -1,6 +1,7 @@
 import Link from "next/link";
 import Rating from "../Rating";
 import Image from "next/image";
+import { getApiBase } from "@/lib/apiBase";
 
 interface Hotel {
   id: string;
@@ -16,7 +17,12 @@ interface ProductCardProps {
 }
 
 function ProductCard({ hotel }: ProductCardProps) {
-  console.log(hotel);
+  const normalizeImageUrl = (url: string) => {
+    if (!url) return url;
+    if (/^https?:\/\//i.test(url)) return url;
+    if (url.startsWith('/uploads/')) return `${getApiBase().replace(/\/$/, '')}${url}`;
+    return url;
+  };
   return (
     <div className="w-full">
       <Link href={`/hotel-detail/${hotel.id}`} className="group block">
@@ -25,10 +31,11 @@ function ProductCard({ hotel }: ProductCardProps) {
             <Image
               unoptimized
               fill
-              src={hotel.images[0]}
+              src={normalizeImageUrl(hotel.images[0])}
               alt={hotel.name}
               sizes="(max-width: 768px) 100vw, 300px"
               className="object-cover w-full h-full transition-transform duration-300 group-hover:scale-105"
+              onError={(e:any)=>{ e.currentTarget.style.opacity='0'; console.warn('No se pudo cargar imagen', hotel.images[0]); }}
             />
             {/* Overlay with icons (exactly covering the image) */}
             <div className="absolute inset-0 flex items-center justify-center opacity-0 group-hover:opacity-80 bg-black/60 transition-opacity z-10">

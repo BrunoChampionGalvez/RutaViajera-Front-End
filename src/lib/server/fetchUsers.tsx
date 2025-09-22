@@ -19,6 +19,7 @@ import {
   IReview,
   IUser,
 } from "@/interfaces";
+import { getApiBase } from "@/lib/apiBase";
 
 export const postCustomerRegister = async (user: Omit<IUser, "id">) => {
   // Normalize payload: backend expects birthDate string <= 10 chars (e.g. YYYY-MM-DD)
@@ -28,7 +29,7 @@ export const postCustomerRegister = async (user: Omit<IUser, "id">) => {
   };
   try {
     const response = await fetch(
-      `${process.env.NEXT_PUBLIC_API_URL}/auth/cxSignUp`,
+      `${getApiBase()}/auth/cxSignUp`,
       {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -56,7 +57,7 @@ export const postCustomerRegister = async (user: Omit<IUser, "id">) => {
 export const postAdminRegister = async (user: Omit<IUser, "id">) => {
   try {
     const response = await fetch(
-      `${process.env.NEXT_PUBLIC_API_URL}/auth/adminSignUp`,
+      `${getApiBase()}/auth/adminSignUp`,
       {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -78,7 +79,7 @@ export const postAdminRegister = async (user: Omit<IUser, "id">) => {
 export const postLogin = async (credentials: ILogin) => {
   try {
     const response = await fetch(
-      `${process.env.NEXT_PUBLIC_API_URL}/auth/SignIn`,
+      `${getApiBase()}/auth/SignIn`,
       {
         method: "POST",
         headers: {
@@ -102,7 +103,7 @@ export const postLogin = async (credentials: ILogin) => {
 export const sendEmail = async (credentials: Partial<ILogin>) => {
   try {
     const response = await fetch(
-      `${process.env.NEXT_PUBLIC_API_URL}/auth/password-recovery`,
+      `${getApiBase()}/auth/password-recovery`,
       {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -121,7 +122,7 @@ export const tokenVerified = async (
 ) => {
   try {
     const response = await fetch(
-      `${process.env.NEXT_PUBLIC_API_URL}/auth/api/reset-password`,
+      `${getApiBase()}/auth/api/reset-password`,
       {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -140,7 +141,7 @@ export const postReview = async (review: ICreateReview) => {
   console.log("Token:", token);
   try {
     const response = await fetch(
-      `${process.env.NEXT_PUBLIC_API_URL}/reviews`,
+      `${getApiBase()}/reviews`,
       {
         method: "POST",
         headers: {
@@ -175,7 +176,7 @@ export const postReview = async (review: ICreateReview) => {
 export const getAllReviews = async () => {
   try {
     const response = await fetch(
-      `${process.env.NEXT_PUBLIC_API_URL}/reviews`
+      `${getApiBase()}/reviews`
     );
     if (response.ok) {
       const data = await response.json();
@@ -203,7 +204,7 @@ export const putUpdateProfile = async (
     
     
     const response = await fetch(
-      `${process.env.NEXT_PUBLIC_API_URL}/customers/${userId}`,
+      `${getApiBase()}/customers/${userId}`,
       {
         method: "PUT",
         headers: {
@@ -236,7 +237,7 @@ export const putUpdateProfileHotelier = async (
     const token =
       typeof window !== "undefined" && localStorage.getItem("token");
     const response = await fetch(
-      `${process.env.NEXT_PUBLIC_API_URL}/hotel-admins/${userId}`,
+      `${getApiBase()}/hotel-admins/${userId}`,
       {
         method: "PUT",
         headers: {
@@ -259,53 +260,40 @@ export const putUpdateProfileHotelier = async (
 
 export const fetchCustomerBookings = async (customerId: string) => {
   const token = getAuthToken();
-
-  if (!token) {
-    throw new Error("No se encontró el token de autenticación.");
-  }
-
-  const response = await fetch(
-    `${process.env.NEXT_PUBLIC_API_URL}/bookings/customer/${customerId}`,
-    {
-      method: "GET",
-      headers: {
-        "Content-Type": "application/json",
-        Authorization: `Bearer ${token}`,
-      },
+  if (!token) throw new Error("No se encontró el token de autenticación.");
+  const base = getApiBase();
+  let response: Response;
+  try {
+    response = await fetch(`${base}/bookings/customer/${customerId}` , {
+      method: 'GET',
+      headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` }
+    });
+  } catch (err: any) {
+    if (err?.message === 'Failed to fetch') {
+      throw new Error(`Failed to fetch - No se pudo contactar al backend (${base}/bookings/customer/${customerId}). Verifica backend (PORT), CORS y variable NEXT_PUBLIC_API_URL.`);
     }
-  );
-
+    throw err;
+  }
   if (!response.ok) {
-    // Attempt to interpret known backend "no bookings" message
     try {
       const errData = await response.json();
-      if (
-        response.status === 400 &&
-        (errData?.message === 'No se encontró ningún booking.' ||
-          /No se encontr[oó] ning[uú]n booking/i.test(errData?.message))
-      ) {
-        return [] as any[]; // treat as empty list instead of error
+      if (response.status === 400 && (errData?.message === 'No se encontró ningún booking.' || /No se encontr[oó] ning[uú]n booking/i.test(errData?.message))) {
+        return [] as any[]; // no bookings is non-fatal
       }
-      throw new Error(
-        `Error en la solicitud: ${response.status} - ${response.statusText} - ${errData?.message || ''}`
-      );
+      throw new Error(`Error en la solicitud: ${response.status} - ${response.statusText} - ${errData?.message || ''}`);
     } catch (e) {
       if (e instanceof Error) throw e;
-      throw new Error(
-        `Error en la solicitud: ${response.status} - ${response.statusText}`
-      );
+      throw new Error(`Error en la solicitud: ${response.status} - ${response.statusText}`);
     }
   }
-
-  const data = await response.json();
-  return data;
+  return await response.json();
 };
 
 export const cancelBooking = async (bookingId: string) => {
   const token = getAuthToken();
   if (!token) throw new Error('Authentication token missing');
   const response = await fetch(
-    `${process.env.NEXT_PUBLIC_API_URL}/bookings/cancel/${bookingId}`,
+    `${getApiBase()}/bookings/cancel/${bookingId}`,
     {
       method: "PUT",
       headers: {
@@ -323,50 +311,44 @@ export const cancelBooking = async (bookingId: string) => {
 
 export const fetchCustomerDetails = async (customerId: string) => {
   const token = getAuthToken();
-  console.log('1 fetchCustomerDetails');
-  
-  const response = await fetch(
-    `${process.env.NEXT_PUBLIC_API_URL}/customers/${customerId}`,
-    {
+  const base = getApiBase();
+  try {
+    const response = await fetch(`${base}/customers/${customerId}` , {
       method: "GET",
-      headers: {
-        // Removed colon after Bearer; correct scheme is 'Bearer <token>'
-        Authorization: `Bearer ${token}`,
-      }
+      headers: { Authorization: `Bearer ${token}` }
+    });
+    if (!response.ok) {
+      let details: any = null; try { details = await response.json(); } catch {}
+      const message = details?.message || 'Error fetching customer details';
+      throw new Error(`Customer fetch failed (${response.status}): ${message}`);
     }
-  );
-  console.log('2 fetchCustomerDetails');
-  if (!response.ok) {
-    let details: any = null;
-    try { details = await response.json(); } catch {}
-    const message = details?.message || 'Error fetching customer details';
-    throw new Error(`Customer fetch failed (${response.status}): ${message}`);
+    return response.json();
+  } catch (err: any) {
+    if (err?.message === 'Failed to fetch') {
+      throw new Error(`Failed to fetch - No se pudo contactar al backend (${base}/customers/${customerId}). Verifica que el backend esté corriendo, CORS y NEXT_PUBLIC_API_URL.`);
+    }
+    throw err;
   }
-  return response.json();
-}
+};
 
 export const fetchHotelierDetails = async (hotelierId: string) => {
   const token = getAuthToken();
-
-  console.log('1 fetchHotelierDetails');
-
-  const response = await fetch(
-    `${process.env.NEXT_PUBLIC_API_URL}/hotel-admins/${hotelierId}`,
-    {
+  const base = getApiBase();
+  try {
+    const response = await fetch(`${base}/hotel-admins/${hotelierId}`, {
       method: "GET",
-      headers: {
-        // Removed colon after Bearer; correct scheme is 'Bearer <token>'
-        Authorization: `Bearer ${token}`,
-      }
+      headers: { Authorization: `Bearer ${token}` }
+    });
+    if (!response.ok) {
+      let details: any = null; try { details = await response.json(); } catch {}
+      const message = details?.message || 'Error fetching hotel admin details';
+      throw new Error(`Hotelier fetch failed (${response.status}): ${message}`);
     }
-  );
-
-  console.log('2 fetchHotelierDetails');
-  if (!response.ok) {
-    let details: any = null;
-    try { details = await response.json(); } catch {}
-    const message = details?.message || 'Error fetching hotel admin details';
-    throw new Error(`Hotelier fetch failed (${response.status}): ${message}`);
+    return response.json();
+  } catch (err: any) {
+    if (err?.message === 'Failed to fetch') {
+      throw new Error(`Failed to fetch - No se pudo contactar al backend (${base}/hotel-admins/${hotelierId}). Verifica backend, CORS y NEXT_PUBLIC_API_URL.`);
+    }
+    throw err;
   }
-  return response.json();
-}
+};

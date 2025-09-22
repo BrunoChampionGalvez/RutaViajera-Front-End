@@ -5,15 +5,27 @@ import { v2 as cloudinary, UploadApiResponse } from "cloudinary"
 import { promises as fs } from 'fs';
 import path from 'path';
 
-const USE_LOCAL = process.env.LOCAL_IMAGE_STORAGE === 'true';
+// LOCAL_IMAGE_STORAGE is intended only for local dev. On serverless (e.g. Vercel) the filesystem is ephemeral.
+const requestedLocal = process.env.LOCAL_IMAGE_STORAGE === 'true';
+const runningOnVercel = !!process.env.VERCEL;
+// If user requested local but we're on a serverless platform, force fallback to Cloudinary.
+const USE_LOCAL = requestedLocal && !runningOnVercel;
 
+// Configure Cloudinary if we will use it.
 if (!USE_LOCAL) {
-    cloudinary.config({
-        cloud_name: process.env.NEXT_PUBLIC_CLOUDINARY_CLOUD_NAME,
-        api_key: process.env.NEXT_PUBLIC_CLOUDINARY_API_KEY,
-        api_secret: process.env.CLOUDINARY_API_SECRET,
-        secure: true
-    });
+    const cloudName = process.env.NEXT_PUBLIC_CLOUDINARY_CLOUD_NAME;
+    const apiKey = process.env.NEXT_PUBLIC_CLOUDINARY_API_KEY;
+    const apiSecret = process.env.CLOUDINARY_API_SECRET;
+    if (!cloudName || !apiKey || !apiSecret) {
+        console.error('[upload-hotel-images] Missing Cloudinary environment variables in production.');
+    } else {
+        cloudinary.config({
+            cloud_name: cloudName,
+            api_key: apiKey,
+            api_secret: apiSecret,
+            secure: true
+        });
+    }
 }
 
 export async function POST(req: NextRequest) {
@@ -39,22 +51,34 @@ export async function POST(req: NextRequest) {
             }
             return NextResponse.json(urls, { status: 200 });
         } else {
-            const uploadedImageUrls: (string | undefined)[] = [];
-            for (const buffer of buffers) {
-                const result: UploadApiResponse | undefined = await new Promise((resolve, reject) => {
-                    cloudinary.uploader.upload_stream({
-                        tags: ['nextjs-rutaviajera-hotels']
-                    }, function (error, result: UploadApiResponse | undefined) {
-                        if (error) {
-                            reject(error);
-                            return;
-                        }
-                        resolve(result);
-                    }).end(buffer);
-                });
-                uploadedImageUrls.push(result?.secure_url);
+            const uploadedImageUrls: string[] = [];
+            const cloudName = process.env.NEXT_PUBLIC_CLOUDINARY_CLOUD_NAME;
+            const apiKey = process.env.NEXT_PUBLIC_CLOUDINARY_API_KEY;
+            const apiSecret = process.env.CLOUDINARY_API_SECRET;
+            if (!cloudName || !apiKey || !apiSecret) {
+                return NextResponse.json({ error: 'Cloudinary not configured on server (missing env vars)' }, { status: 500 });
             }
-            return NextResponse.json(uploadedImageUrls, { status: 200 });
+            for (const buffer of buffers) {
+                try {
+                    const result: UploadApiResponse | undefined = await new Promise((resolve, reject) => {
+                        cloudinary.uploader.upload_stream({
+                            tags: ['nextjs-rutaviajera-hotels']
+                        }, function (error, result: UploadApiResponse | undefined) {
+                            if (error) {
+                                reject(error);
+                                return;
+                            }
+                            resolve(result);
+                        }).end(buffer);
+                    });
+                    if (result?.secure_url) {
+                        uploadedImageUrls.push(result.secure_url);
+                    }
+                } catch (e) {
+                    console.error('[upload-hotel-images] Single image upload failed:', e);
+                }
+            }
+            return NextResponse.json(uploadedImageUrls.filter(Boolean), { status: 200 });
         }
     } catch (err: any) {
         console.error('Upload error:', err);

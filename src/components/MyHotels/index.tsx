@@ -15,6 +15,7 @@ import { Pagination } from "swiper/modules";
 import HotelFullEditor from "../HotelFullEditor";
 import { IAdminHotel } from "@/interfaces";
 import { deleteHotel, updateHotel } from "@/lib/server/fetchHotels";
+import { getApiBase } from "@/lib/apiBase";
 import { showToast } from "@/lib/toast";
 
 function MyHotels() {
@@ -78,6 +79,18 @@ function MyHotels() {
     }
   };
 
+  // Helper: normaliza una URL de imagen proveniente del backend.
+  // Si viene como /uploads/... le antepone el dominio del backend.
+  const normalizeImageUrl = (url: string) => {
+    if (!url) return url;
+    if (/^https?:\/\//i.test(url)) return url; // ya absoluta
+    if (url.startsWith('/uploads/')) {
+      const base = getApiBase();
+      return `${base.replace(/\/$/, '')}${url}`; // asegura no doble slash
+    }
+    return url;
+  };
+
   return (
   <div className="flex flex-col h-full overflow-x-hidden w-full">
       {isModalOpen && selectedHotel && (
@@ -133,10 +146,11 @@ function MyHotels() {
                       <div className="">
                         <Image
                           unoptimized
-                          src={hotel.images[0]}
+                          src={normalizeImageUrl(hotel.images[0])}
                           alt={hotel.name}
                           width={500}
                           height={100}
+                          onError={(e:any)=>{ e.currentTarget.style.opacity='0'; console.warn('Fallo al cargar imagen hotel', hotel.images[0]); }}
                           className="w-full rounded-t-lg aspect-square object-cover group-hover:scale-105 transition-transform"
                         />
                       </div>

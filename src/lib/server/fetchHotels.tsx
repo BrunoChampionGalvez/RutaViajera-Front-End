@@ -5,6 +5,7 @@ import {
   IRoomType,
   IRoomTypeRegister,
 } from "@/interfaces";
+import { getApiBase } from "@/lib/apiBase";
 
 export const postHotel = async (hotel: IHotelRegisterPost) => {
   const token = localStorage.getItem("token");
@@ -25,17 +26,15 @@ export const postHotel = async (hotel: IHotelRegisterPost) => {
   }
 
   try {
-    const response = await fetch(
-      `${process.env.NEXT_PUBLIC_API_URL}/hotels`,
-      {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          Authorization: `Bearer ${token}`,
-        },
-        body: JSON.stringify(hotel),
-      }
-    );
+    const base = getApiBase();
+    const response = await fetch(`${base}/hotels`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${token}`,
+      },
+      body: JSON.stringify(hotel),
+    });
     if (!response.ok) {
       let errorMsg = `Error en la solicitud: ${response.status}`;
       try {
@@ -56,7 +55,15 @@ export const postHotel = async (hotel: IHotelRegisterPost) => {
     const data = await response.json();
     return data;
   } catch (error) {
-    console.error(error);
+    // Mejora de diagnóstico para Connection Refused / CORS
+    if ((error as any)?.message === 'Failed to fetch') {
+      const hint = `No se pudo contactar al backend (${getApiBase()}/hotels). Verifica:
+1) Backend levantado (npm run start:dev en carpeta back)
+2) CORS incluye el origen del frontend
+3) No hay conflicto de puertos (frontend y backend usando 3000)
+4) NEXT_PUBLIC_API_URL apunta al backend correcto`;
+      throw new Error(`Failed to fetch - ${hint}`);
+    }
     throw error;
   }
 };
@@ -64,7 +71,7 @@ export const postHotel = async (hotel: IHotelRegisterPost) => {
 export const postRoomType = async (roomType: Partial<IRoomType>) => {
   const token = typeof window !== "undefined" && localStorage.getItem("token");
   if (!token) throw new Error('Token no encontrado (inicia sesión de nuevo).');
-  const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/roomstype`, {
+  const response = await fetch(`${getApiBase()}/roomstype`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
     body: JSON.stringify(roomType)
@@ -111,7 +118,7 @@ export const postRoom = async (rooms: string[], roomTypeId: string | null) => {
         continue;
       }
       const roomObjectToSend = { roomNumber: trimmed, roomsTypeId: roomTypeId };
-      const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/rooms`, {
+  const response = await fetch(`${getApiBase()}/rooms`, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
@@ -157,7 +164,7 @@ export const postRoom = async (rooms: string[], roomTypeId: string | null) => {
 export const getHotelById = async (id: string) => {
   try {
     const response = await fetch(
-      `${process.env.NEXT_PUBLIC_API_URL}/hotels/${id}`,
+      `${getApiBase()}/hotels/${id}`,
       {
         cache: "no-cache",
       }
@@ -177,15 +184,18 @@ export const fetchHotelsByAdminId = async (id: string) => {
     throw new Error("No se encontró el token de autenticación.");
   }
 
-  const response = await fetch(
-    `${process.env.NEXT_PUBLIC_API_URL}/hotels/hotelAdmin/${id}`,
-    {
-      method: "GET",
-      headers: {
-        Authorization: `Bearer ${token}`,
-      },
+  let response: Response;
+  try {
+    response = await fetch(`${getApiBase()}/hotels/hotelAdmin/${id}` , {
+      method: 'GET',
+      headers: { Authorization: `Bearer ${token}` }
+    });
+  } catch (err: any) {
+    if (err?.message === 'Failed to fetch') {
+      throw new Error(`Failed to fetch - No se pudo contactar al backend (${getApiBase()}/hotels/hotelAdmin/${id}). Verifica que el backend esté corriendo, CORS y puerto.`);
     }
-  );
+    throw err;
+  }
   // Eliminado console.log redundante que generaba ruido en consola.
 
   if (!response.ok) {
@@ -203,7 +213,7 @@ export const fetchHotelsByAdminId = async (id: string) => {
 };
 
 export const getHotels = async () => {
-  const base = process.env.NEXT_PUBLIC_API_URL;
+  const base = getApiBase();
   const diagnostics: Record<string, any> = {
     base,
     hasWindow: typeof window !== 'undefined',
@@ -214,7 +224,7 @@ export const getHotels = async () => {
     if (!base) {
       console.warn('[getHotels] NEXT_PUBLIC_API_URL no está definido. Revisa variables de entorno en producción.');
     }
-    const apiUrl = `${base?.replace(/\/$/, '') || ''}/hotels`;
+  const apiUrl = `${base.replace(/\/$/, '')}/hotels`;
     console.log('[getHotels] Fetching hotels', diagnostics, '->', apiUrl);
     const response = await fetch(apiUrl, { cache: 'no-store' });
     console.log('[getHotels] Response meta', { status: response.status, ok: response.ok, url: response.url, redirected: response.redirected });
@@ -247,7 +257,7 @@ export const getHotels = async () => {
 export const getHotelsBySearch = async (searchQuery: string) => {
   try {
     const response = await fetch(
-      `${process.env.NEXT_PUBLIC_API_URL}/hotels/search?search=${searchQuery}`
+      `${getApiBase()}/hotels/search?search=${searchQuery}`
     );
     if (response.ok) {
       const data = await response.json();
@@ -286,7 +296,7 @@ export const postBooking = async (booking: {
   const token = typeof window !== "undefined" && localStorage.getItem("token");
   try {
     const response = await fetch(
-      `${process.env.NEXT_PUBLIC_API_URL}/bookings`,
+      `${getApiBase()}/bookings`,
       {
         method: "POST",
         headers: {
@@ -338,7 +348,7 @@ export const getRoomTypesByHotelId = async (
     const token = localStorage.getItem("token");
 
     const response = await fetch(
-      `${process.env.NEXT_PUBLIC_API_URL}/roomstype/hotel/${hotelId}`,
+      `${getApiBase()}/roomstype/hotel/${hotelId}`,
       {
         headers: {
           Authorization: `Bearer ${token}`,
@@ -375,7 +385,7 @@ export const updateHotel = async (hotelId: string, hotelData: any) => {
   const token = localStorage.getItem("token");
 
   const response = await fetch(
-    `${process.env.NEXT_PUBLIC_API_URL}/hotels/${hotelId}`,
+    `${getApiBase()}/hotels/${hotelId}`,
     {
       method: "PUT",
       headers: {
@@ -402,7 +412,7 @@ export const deleteHotel = async (hotelId: string) => {
   }
 
   const response = await fetch(
-    `${process.env.NEXT_PUBLIC_API_URL}/hotels/${hotelId}`,
+    `${getApiBase()}/hotels/${hotelId}`,
     {
       method: "DELETE",
       headers: {
@@ -434,7 +444,7 @@ export const deleteHotel = async (hotelId: string) => {
 export const fetchBookingById = async (bookingId: string) => {
   const token = typeof window !== "undefined" && localStorage.getItem("token");
   if (!token) throw new Error('Token no encontrado');
-  const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/bookings/${bookingId}` , {
+  const response = await fetch(`${getApiBase()}/bookings/${bookingId}` , {
     method: 'GET',
     headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` }
   });
@@ -448,7 +458,7 @@ export const fetchBookingById = async (bookingId: string) => {
 export const updateRoomType = async (roomTypeId: string, roomType: Partial<IRoomType>) => {
   const token = localStorage.getItem('token');
   if (!token) throw new Error('No estás autorizado.');
-  const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/roomstype/${roomTypeId}`, {
+  const response = await fetch(`${getApiBase()}/roomstype/${roomTypeId}`, {
     method: 'PUT',
     headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
     body: JSON.stringify(roomType)
@@ -464,7 +474,7 @@ export const updateRoomType = async (roomTypeId: string, roomType: Partial<IRoom
 export const deleteRoomType = async (roomTypeId: string) => {
   const token = localStorage.getItem('token');
   if (!token) throw new Error('No estás autorizado.');
-  const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/roomstype/${roomTypeId}`, {
+  const response = await fetch(`${getApiBase()}/roomstype/${roomTypeId}`, {
     method: 'DELETE',
     headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` }
   });
@@ -481,7 +491,7 @@ export const deleteRoomType = async (roomTypeId: string) => {
 export const getRoomsByRoomTypeIdForAdmin = async (roomTypeId: string) => {
   const token = localStorage.getItem('token');
   if (!token) throw new Error('No estás autorizado.');
-  const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/rooms/roomtype/${roomTypeId}`, {
+  const response = await fetch(`${getApiBase()}/rooms/roomtype/${roomTypeId}`, {
     method: 'GET',
     headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` }
   });
@@ -493,7 +503,7 @@ export const getRoomsByRoomTypeIdForAdmin = async (roomTypeId: string) => {
 export const updateRoom = async (roomId: string, roomPatch: { roomNumber?: string }) => {
   const token = localStorage.getItem('token');
   if (!token) throw new Error('No estás autorizado.');
-  const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/rooms/${roomId}`, {
+  const response = await fetch(`${getApiBase()}/rooms/${roomId}`, {
     method: 'PUT',
     headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
     body: JSON.stringify(roomPatch)
@@ -509,7 +519,7 @@ export const updateRoom = async (roomId: string, roomPatch: { roomNumber?: strin
 export const deleteRoom = async (roomId: string) => {
   const token = localStorage.getItem('token');
   if (!token) throw new Error('No estás autorizado.');
-  const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/rooms/${roomId}`, {
+  const response = await fetch(`${getApiBase()}/rooms/${roomId}`, {
     method: 'DELETE',
     headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` }
   });
@@ -527,7 +537,7 @@ export const uploadRoomTypeImages = async (files: File[]) => {
   if (!token) throw new Error('No estás autorizado.');
   const form = new FormData();
   files.forEach(f => form.append('files', f));
-  const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/roomstype/images`, {
+  const response = await fetch(`${getApiBase()}/roomstype/images`, {
     method: 'POST',
     headers: { Authorization: `Bearer ${token}` },
     body: form

@@ -5,12 +5,13 @@ import { IHotelRegisterInitialValues, ILocationDetail } from "@/interfaces";
 import { Formik, Form, Field, ErrorMessage } from "formik";
 import Image from "next/image";
 import continueImage from "../../../public/continue.png";
-import { useContext, useState } from "react";
+import { useContext, useState, useRef } from "react";
 import { showToast } from "@/lib/toast";
 import useGoogleMapsData from "@/lib/googleMaps/googleMapsData";
 import { GoogleMap, Marker } from "@react-google-maps/api";
 import { useRouter } from "next/navigation";
 import { postHotel } from "@/lib/server/fetchHotels";
+import { getApiBase } from "@/lib/apiBase";
 import { UserContext } from "@/context/userContext";
 import Link from "next/link";
 import { HotelContext } from "@/context/hotelContext";
@@ -245,20 +246,15 @@ const HotelRegister: React.FC<HotelRegisterProps> = ({ onHotelCreated, suppressR
     "Zimbabue",
   ];
 
-  const [selectedBuffers, setSelectedBuffers] = useState<Uint8Array[]>([])
-  const handleImagesSelection = async (event: React.ChangeEvent<HTMLInputElement>) => {
-    const files = event.target.files
-    if (files) {
-      const filesArray = Array.from(files)
-      for (let i = 0; i < filesArray.length; i++) {
-        const file = filesArray[i]
-        const arrayBuffer = await file.arrayBuffer()
-        const buffer = new Uint8Array(arrayBuffer)
+  const [selectedFiles, setSelectedFiles] = useState<File[]>([]);
+  const fileInputRef = useRef<HTMLInputElement | null>(null);
 
-        setSelectedBuffers((prevFiles) => [...prevFiles, buffer])
-      }
-    }
-  }
+  const handleImagesSelection = (event: React.ChangeEvent<HTMLInputElement>) => {
+    const files = event.target.files;
+    if (!files) return;
+    const filesArray = Array.from(files);
+    setSelectedFiles(filesArray);
+  };
 
   const handleSubmit = async (
     values: IHotelRegisterInitialValues,
@@ -287,31 +283,46 @@ const HotelRegister: React.FC<HotelRegisterProps> = ({ onHotelCreated, suppressR
       console.warn("El id del admin no parece un UUID válido:", user.id);
     }
     
-    const buffersToUpload = {
-      arraysOfBuffers: selectedBuffers.map(buffer => Array.from(buffer)) // Convert Uint8Array to array of numbers
-    };
-    
+    // Subir imágenes directamente al backend (NestJS) si hay archivos
     let uploadedUrls: string[] = [];
-    try {
-      const response = await fetch('/api/upload-hotel-images', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(buffersToUpload)
-      });
-      if (response.ok) {
-        uploadedUrls = await response.json();
-      } else {
-        console.warn('Fallo al subir imágenes, se continuará sin ellas');
+    if (selectedFiles.length) {
+      const formDataImages = new FormData();
+      selectedFiles.forEach(f => formDataImages.append('files', f));
+      const base = getApiBase();
+      const endpointsToTry = [ `${base}/hotels/images` ];
+      // Heurística: si base termina en :3000 añadir intento alterno 3001 (caso backend corriendo en 3000 y frontend en 3001 o viceversa)
+      try {
+        const m = base.match(/^(https?:\/\/localhost:)(\d+)/i);
+        if (m) {
+          const currentPort = m[2];
+          const altPort = currentPort === '3000' ? '3001' : '3000';
+            endpointsToTry.push(base.replace(/:\d+$/, `:${altPort}`) + '/hotels/images');
+        }
+      } catch {}
+      for (const ep of endpointsToTry) {
+        try {
+          const uploadResp = await fetch(ep, { method: 'POST', headers: { 'Authorization': `Bearer ${token}` }, body: formDataImages });
+          if (uploadResp.ok) {
+            const data = await uploadResp.json();
+            uploadedUrls = (data?.files || []).filter((u: string) => !!u);
+            break;
+          } else {
+            console.warn(`[upload images] intento fallido ${ep} status=${uploadResp.status}`);
+          }
+        } catch (err) {
+          console.warn(`[upload images] error de red al intentar ${ep}`, err);
+        }
       }
-    } catch (e) {
-      console.warn('Error subiendo imágenes (continuando sin imágenes):', e);
+      if (!uploadedUrls.length) {
+        console.warn('Ninguna subida de imágenes fue exitosa; se continúa sin imágenes.');
+      }
     }
 
-    const formData = {
+    const formData: any = {
       ...values,
-      images: uploadedUrls,
       hotel_admin_id: user.id,
     };
+    if (uploadedUrls.length) formData.images = uploadedUrls; // evita mandar [] o undefined
 
     console.log("Datos que se envían al backend:", formData);
 
@@ -587,11 +598,16 @@ const HotelRegister: React.FC<HotelRegisterProps> = ({ onHotelCreated, suppressR
                       Imagen del hotel
                     </label>
                     <input
+                      ref={fileInputRef}
                       type="file"
                       multiple
                       name="images"
                       onChange={handleImagesSelection}
+                      accept="image/png,image/jpeg,image/jpg,image/webp,image/gif"
                     />
+                    {selectedFiles.length > 0 && (
+                      <p className="text-xs text-gray-500 mt-1">{selectedFiles.length} archivo(s) seleccionado(s)</p>
+                    )}
                     <ErrorMessage name="images" component="div" className="text-red-500" />
                   </div>
                   <div>

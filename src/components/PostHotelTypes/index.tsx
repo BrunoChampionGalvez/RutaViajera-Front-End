@@ -31,7 +31,7 @@ export default function TypesRegister({ hotelId, onRoomTypesSaved, suppressStand
   const [draftRoomTypes, setDraftRoomTypes] = useState<Partial<IRoomTypeRegister>[]>(draftList || []);
   // Start counter at 1 so we never have a temporary id of 0 (which caused toggle issues)
   const [counter, setCounter] = useState(1);
-  const [selectedBuffers, setSelectedBuffers] = useState<Uint8Array[]>([]);
+  const [selectedFiles, setSelectedFiles] = useState<File[]>([]);
   const [adding, setAdding] = useState(false);
   const [saving, setSaving] = useState(false);
   const [expandedId, setExpandedId] = useState<number | null>(null);
@@ -57,13 +57,10 @@ export default function TypesRegister({ hotelId, onRoomTypesSaved, suppressStand
     if (draftList) setDraftRoomTypes(draftList);
   }, [draftList]);
 
-  const handleImagesSelection = async (e: React.ChangeEvent<HTMLInputElement>) => {
+  const handleImagesSelection = (e: React.ChangeEvent<HTMLInputElement>) => {
     const files = e.target.files;
     if (!files) return;
-    for (const f of Array.from(files)) {
-      const buf = new Uint8Array(await f.arrayBuffer());
-      setSelectedBuffers(prev => [...prev, buf]);
-    }
+    setSelectedFiles(Array.from(files));
   };
 
   const addDraft = (vals: Omit<IRoomTypeRegister, 'id'>, reset: () => void) => {
@@ -77,13 +74,13 @@ export default function TypesRegister({ hotelId, onRoomTypesSaved, suppressStand
     const draft: Partial<IRoomTypeRegister> = {
       id: counter,
       ...vals,
-      images: selectedBuffers.map(b => Array.from(b))
+      images: [] // will be filled after real upload during persistAll
     } as any;
     const updated = [...draftRoomTypes, draft];
     setDraftRoomTypes(updated);
     onDraftListChange?.(updated);
     setCounter(c => c + 1);
-    setSelectedBuffers([]);
+  setSelectedFiles([]);
     reset();
     setAdding(false);
     // Removed automatic switch to 'list' to allow adding multiple without losing context
@@ -111,14 +108,16 @@ export default function TypesRegister({ hotelId, onRoomTypesSaved, suppressStand
     for (const d of draftRoomTypes) {
       try {
         let uploaded: string[] = [];
-        if (Array.isArray(d.images) && d.images.length) {
+        // Si este draft fue el último agregado puede tener selectedFiles asociados temporalmente
+        if (selectedFiles.length && d.id === draftRoomTypes[draftRoomTypes.length - 1]?.id) {
           try {
-            const resp = await fetch('/api/upload-hotel-images', {
-              method: 'POST',
-              headers: { 'Content-Type': 'application/json' },
-              body: JSON.stringify({ arraysOfBuffers: d.images })
-            });
-            if (resp.ok) uploaded = await resp.json();
+            const fd = new FormData();
+            selectedFiles.forEach(f => fd.append('files', f));
+            const uploadResp = await fetch(`${process.env.NEXT_PUBLIC_API_URL || ''}/roomstype/images`, { method: 'POST', body: fd });
+            if (uploadResp.ok) {
+              const data = await uploadResp.json();
+              uploaded = (data?.files || []).filter((u: string) => !!u);
+            }
           } catch (e) {
             console.warn('Upload fallo', e);
           }
@@ -236,7 +235,8 @@ export default function TypesRegister({ hotelId, onRoomTypesSaved, suppressStand
                 </div>
                 <div>
                   <label className="formLabel" htmlFor="images">Imágenes</label>
-                  <input type="file" multiple name="images" onChange={handleImagesSelection} />
+                  <input type="file" multiple name="images" accept="image/png,image/jpeg,image/jpg,image/webp,image/gif" onChange={handleImagesSelection} />
+                  {selectedFiles.length > 0 && (<p className="text-xs text-gray-500 mt-1">{selectedFiles.length} archivo(s) seleccionados</p>)}
                 </div>
                 <div className="flex justify-end gap-2">
                   <button

@@ -35,7 +35,7 @@ function HotelsFilter({ onFilter }: IHotelsFilterProps) {
   // All dual slider logic now handled by DualRangeSlider component
 
   return (
-    <aside className="w-full md:w-64 lg:w-72 xl:w-80 bg-red-500 p-6 md:sticky md:top-4 h-full shadow-sm space-y-6">
+    <aside className="w-full md:w-64 lg:w-72 xl:w-80 bg-red-600 p-6 md:sticky md:top-4 h-full shadow-sm space-y-6">
       <h2 className="text-xl font-semibold text-white">Filtros</h2>
       {/* Country */}
       <div>
