@@ -129,6 +129,9 @@ function ProductsList({ searchQuery, queryParams }: IProductsListProps) {
       )
     : [];
 
+  const showDiagnostics = !loading && filteredHotels.length === 0;
+  const apiBase = process.env.NEXT_PUBLIC_API_URL;
+
   return (
     <div className="p-6">
       <div className="flex justify-center">
@@ -140,7 +143,20 @@ function ProductsList({ searchQuery, queryParams }: IProductsListProps) {
               <ProductCard key={index} hotel={hotel} />
             ))
           ) : (
-            <p className="col-span-full text-center text-sm text-gray-600">No hay resultados que coincidan con su búsqueda.</p>
+            <div className="col-span-full text-center text-sm text-gray-600 space-y-2">
+              <p>No hay resultados que coincidan con su búsqueda.</p>
+              {showDiagnostics && (
+                <div className="mt-2 p-3 rounded border text-left max-w-md mx-auto bg-gray-50">
+                  <p className="font-semibold mb-1">Diagnóstico rápido</p>
+                  <ul className="list-disc pl-5 space-y-1 text-xs text-gray-700">
+                    {!apiBase && <li>Variable NEXT_PUBLIC_API_URL ausente en build de producción.</li>}
+                    <li>Verifica que el seeder realmente insertó hoteles (endpoint /hotels devuelve array vacío).</li>
+                    <li>Si hay proxy o dominio distinto, revisa CORS y que la URL incluya https:// correcto.</li>
+                    <li>Reimplanta backend o ejecuta manualmente la semilla si la base se reinicializó.</li>
+                  </ul>
+                </div>
+              )}
+            </div>
           )}
         </div>
       </div>

@@ -202,27 +202,44 @@ export const fetchHotelsByAdminId = async (id: string) => {
 };
 
 export const getHotels = async () => {
+  const base = process.env.NEXT_PUBLIC_API_URL;
+  const diagnostics: Record<string, any> = {
+    base,
+    hasWindow: typeof window !== 'undefined',
+    buildTime: process.env.NODE_ENV,
+    ts: new Date().toISOString()
+  };
   try {
-    const apiUrl = `${process.env.NEXT_PUBLIC_API_URL}/hotels`;
-    console.log("Environment variable NEXT_PUBLIC_API_URL:", process.env.NEXT_PUBLIC_API_URL);
-    console.log("Fetching hotels from URL:", apiUrl);
-    
-    const response = await fetch(apiUrl);
-    console.log("Response status:", response.status);
-    console.log("Response ok:", response.ok);
-    
-    if (response.ok) {
-      const data = await response.json();
-      console.log("Hotels data received:", data);
-      return data;
-    } else {
-      const errorText = await response.text();
-      console.error("Error response text:", errorText);
-      throw new Error("Error en la solicitud: " + response.status);
+    if (!base) {
+      console.warn('[getHotels] NEXT_PUBLIC_API_URL no está definido. Revisa variables de entorno en producción.');
     }
-  } catch (error) {
-    console.error("Fetch error:", error);
-    throw error;
+    const apiUrl = `${base?.replace(/\/$/, '') || ''}/hotels`;
+    console.log('[getHotels] Fetching hotels', diagnostics, '->', apiUrl);
+    const response = await fetch(apiUrl, { cache: 'no-store' });
+    console.log('[getHotels] Response meta', { status: response.status, ok: response.ok, url: response.url, redirected: response.redirected });
+    let text: string | null = null;
+    let data: any = null;
+    try {
+      text = await response.text();
+      data = text ? JSON.parse(text) : null;
+    } catch (parseErr) {
+      console.warn('[getHotels] No se pudo parsear JSON, devolviendo texto crudo.', { parseErr, snippet: text?.slice(0, 120) });
+    }
+    if (!response.ok) {
+      console.error('[getHotels] Respuesta no OK', { textSlice: text?.slice(0, 200) });
+      throw new Error(`Error en la solicitud hoteles: ${response.status}`);
+    }
+    if (!Array.isArray(data)) {
+      console.warn('[getHotels] Payload no es un array. Envolviendo en array vacío.', { type: typeof data });
+      return [];
+    }
+    if (data.length === 0) {
+      console.warn('[getHotels] La API devolvió un array vacío. Posibles causas: seeder no corrió, filtrado backend (isDeleted=true), base de datos vacía, o error de permisos.');
+    }
+    return data;
+  } catch (error: any) {
+    console.error('[getHotels] Error general', { message: error?.message, stack: error?.stack });
+    return [];
   }
 };
 
