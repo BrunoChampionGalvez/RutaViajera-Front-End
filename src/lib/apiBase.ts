@@ -1,9 +1,11 @@
-// Centralized API base resolution with development fallbacks.
+// Centralized API base resolution.
+// Development enforced convention:
+//   - Backend: http://localhost:3000
+//   - Frontend dev: http://localhost:3001 (script sets PORT=3001)
 // Priority:
-// 1. Explicit NEXT_PUBLIC_API_URL
-// 2. If running on localhost:3000 (both frontend + backend share 3000 in this requested setup)
-// 3. Default/fallback to http://localhost:3000
-// Optionally you can set NEXT_PUBLIC_API_FALLBACK_PORT to override secondary attempt.
+// 1. Explicit NEXT_PUBLIC_API_URL (always wins)
+// 2. If running on localhost:* -> force backend 3000
+// 3. Fallback: http://localhost:3000
 
 let cached: string | null = null;
 
@@ -16,13 +18,15 @@ export function getApiBase() {
   }
   if (typeof window !== 'undefined') {
     const { protocol, hostname, port } = window.location;
+    // Production guidance: if we're in production (heuristic: vercel.app domain) and no explicit env var, warn developer.
+    if (process.env.NODE_ENV === 'production' && /vercel\.app$/.test(hostname)) {
+      // This warning only appears in browser console; helps diagnose misconfiguration.
+      // Without NEXT_PUBLIC_API_URL the frontend will call itself instead of the backend.
+      // eslint-disable-next-line no-console
+      console.warn('[apiBase] Falta NEXT_PUBLIC_API_URL en entorno de producción. Configura esta variable para apuntar al backend (por ejemplo https://rutaviajera-back-end-production.up.railway.app)');
+    }
     if (hostname === 'localhost') {
-      // Requested setup: backend fixed on 3000, frontend runs on 3001 (preferred) or possibly 3000.
-      if (port === '3001') {
-        cached = `${protocol}//localhost:3000`;
-        return cached;
-      }
-      // If frontend also on 3000, we assume same origin until explicit NEXT_PUBLIC_API_URL provided.
+      // Always point to backend 3000 in local dev (frontend should be on 3001)
       cached = `${protocol}//localhost:3000`;
       return cached;
     }

@@ -19,6 +19,7 @@ import {
   deleteRoom,
   uploadRoomTypeImages,
 } from '@/lib/server/fetchHotels';
+import { getApiBase } from '@/lib/apiBase';
 
 interface HotelFullEditorProps {
   hotel: IAdminHotel | null;
@@ -326,7 +327,7 @@ export default function HotelFullEditor({ hotel, onClose, onUpdated, onDeleted, 
       setDeleting(true);
       // We already have deleteHotel in parent MyHotels logic; reuse updateHotel? We'll call fetch directly through updateHotel? Simpler: use fetch inside here.
       const token = localStorage.getItem('token');
-      const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/hotels/${hotel.id}`, { method: 'DELETE', headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` } });
+      const response = await fetch(`${getApiBase()}/hotels/${hotel.id}`, { method: 'DELETE', headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` } });
       if (!response.ok) throw new Error(`Status ${response.status}`);
       // Optimistic removal + toast
       onDeleted?.(hotel.id);
