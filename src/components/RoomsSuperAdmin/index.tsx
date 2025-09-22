@@ -5,6 +5,8 @@ import { useContext } from "react";
 import { SuperAdminContext } from "../../context/superAdminContext";
 import { IRoomOfSuperAdmin } from "@/interfaces";
 import Modal from "../ModalRooms"; // Import the Modal component
+import { showToast } from '@/lib/toast';
+import Swal from 'sweetalert2';
 import Sidebar from "../SidebarSuperAdmin";
 
 interface RoomsOfRoomTypeProps {
@@ -75,19 +77,29 @@ const RoomsOfRoomType = ({ roomTypeId, searchQuery }: RoomsOfRoomTypeProps) => {
     }, [searchQuery, rooms, fetchRoomsBySearch]);
 
     const handleDeleteRoom = async (roomId: string) => {
-        const confirmed = window.confirm("¿Estás seguro que quieres eliminar esta habitación?");
-        if (!confirmed) return;
+        const res = await Swal.fire({
+            title: '¿Eliminar habitación?',
+            text: 'Esta acción no se puede deshacer',
+            icon: 'warning',
+            showCancelButton: true,
+            confirmButtonText: 'Sí, eliminar',
+            cancelButtonText: 'Cancelar',
+            confirmButtonColor: '#d33'
+        });
+        if (!res.isConfirmed) return;
         try {
             const response = await fetchDeleteRoom(roomId);
             if (response) {
                 const updatedRooms = rooms.filter(room => room.id !== roomId);
                 setRooms(updatedRooms);
                 setFilteredRooms(updatedRooms);
+                showToast('success', <p>Habitación eliminada</p>);
             } else {
-                alert('Hubo un error al eliminar la habitación.')
+                showToast('error', <p>Hubo un error al eliminar la habitación.</p>, { autoClose: 3500 });
             }
         } catch (error) {
             console.log("Error deleting room: ", error);
+            showToast('error', <p>Error inesperado eliminando habitación</p>);
         }
     };
 
@@ -100,11 +112,13 @@ const RoomsOfRoomType = ({ roomTypeId, searchQuery }: RoomsOfRoomTypeProps) => {
                 );
                 setRooms(updatedRooms);
                 setFilteredRooms(updatedRooms);
+                showToast('success', <p>Habitación actualizada</p>);
             } else {
-                alert('Hubo un error al actualizar la habitación.')
+                showToast('error', <p>Hubo un error al actualizar la habitación.</p>, { autoClose: 3500 });
             }
         } catch (error) {
             console.log("Error updating room: ", error);
+            showToast('error', <p>Error inesperado actualizando habitación</p>);
         }
     };
 

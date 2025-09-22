@@ -7,7 +7,8 @@ import Image from "next/image";
 import { getRoomTypesByHotelId, postRoomType } from "@/lib/server/fetchHotels";
 import { useContext, useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
-import Swal from "sweetalert2";
+import Swal from "sweetalert2"; // still used for confirmations elsewhere if any
+import { showToast } from '@/lib/toast';
 import { UserContext } from "@/context/userContext";
 import { HotelContext } from "@/context/hotelContext";
 import { FaArrowDown } from "react-icons/fa";
@@ -135,9 +136,9 @@ export default function TypesRegister({ hotelId, onRoomTypesSaved, suppressStand
       setDraftRoomTypes([]);
       if (saved[0]?.id) setRoomTypeIdBeingCreated(String((saved[0] as any).id));
       onRoomTypesSaved?.(saved);
-      Swal.fire({ icon: 'success', title: 'Tipos guardados', timer: 2200, showConfirmButton: false });
+      showToast('success', <p>Tipos de habitación guardados</p>);
     } else {
-      Swal.fire({ icon: 'info', title: 'Nada guardado', timer: 1600, showConfirmButton: false });
+      showToast('info', <p>Nada guardado</p>, { autoClose: 1800 });
     }
     setSaving(false);
     setActiveTab('list');

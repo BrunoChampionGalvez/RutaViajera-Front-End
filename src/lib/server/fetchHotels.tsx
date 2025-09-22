@@ -195,10 +195,11 @@ export const fetchHotelsByAdminId = async (id: string) => {
   }
   if (response.ok) {
     const data = await response.json();
-    return data;
-  } else {
-    throw new Error("Error en la solicitud: " + response.status);
+    // Front-end safeguard: backend endpoint currently does NOT exclude logically deleted hotels (isDeleted = true)
+    // Filter them out here so UI reflects deletions immediately.
+    return Array.isArray(data) ? data.filter((h:any)=> !h.isDeleted) : data;
   }
+  throw new Error("Error en la solicitud: " + response.status);
 };
 
 export const getHotels = async () => {

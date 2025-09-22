@@ -13,7 +13,7 @@ import Image from "next/image";
 import GoogleCustomerRegisterButton from "../GoogleRegisterButton";
 import "react-toastify/dist/ReactToastify.css";
 import { toast, ToastContent, ToastOptions, Slide, Id } from "react-toastify";
-import { showToast } from "../LoginForm";
+import { showToast } from "@/lib/toast";
 
 
 export default function RegisterForm() {

@@ -83,8 +83,9 @@ export interface IUserContextType {
   getReviews: () => void;
   reviews: IReview[];
   getBookings: (customerId: string) => Promise<void>;
-  getHotelsByAdmin: (adminId: string) => Promise<void>;
+  getHotelsByAdmin: (adminId: string, forceRefresh?: boolean) => Promise<void>;
   addNewHotel: (newHotel: IHotel) => void;
+  removeHotel: (hotelId: string) => void;
   getBookingsByHotel: (hotelId: string) => Promise<IBooking[]>;
   bookings: IBooking[];
   logOut: () => void;

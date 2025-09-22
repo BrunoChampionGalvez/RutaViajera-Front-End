@@ -2,8 +2,8 @@ import MyHotels from "@/components/MyHotels";
 
 export default function MyHotelsPage() {
   return (
-    <div>
-      <div>
+    <div className="h-full">
+      <div className="h-full">
         <MyHotels />
       </div>
     </div>

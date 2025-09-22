@@ -2,7 +2,9 @@
 
 import { useContext, useEffect, useState } from "react";
 import Image from "next/image";
-import HotelCreationWizard from "@/components/HotelCreationWizard";
+// Modal wizard removed in favor of dedicated page
+// import HotelCreationWizard from "@/components/HotelCreationWizard";
+import Link from 'next/link';
 import { UserContext } from "@/context/userContext";
 import { Swiper, SwiperSlide } from "swiper/react";
 import "swiper/css";
@@ -13,18 +15,21 @@ import { Pagination } from "swiper/modules";
 import HotelFullEditor from "../HotelFullEditor";
 import { IAdminHotel } from "@/interfaces";
 import { deleteHotel, updateHotel } from "@/lib/server/fetchHotels";
+import { showToast } from "@/lib/toast";
 
 function MyHotels() {
-  const { user, getHotelsByAdmin } = useContext(UserContext);
+  const { user, getHotelsByAdmin, removeHotel } = useContext(UserContext);
+  const [isDeleting, setIsDeleting] = useState<string | null>(null);
   const [selectedHotel, setSelectedHotel] = useState<IAdminHotel | null>(null);
   const [isModalOpen, setIsModalOpen] = useState(false);
-  const hotels = user?.hotels || [];
-  const [isWizardOpen, setIsWizardOpen] = useState(false);
+  // Filter out soft-deleted hotels immediately (prevents showing items with isDeleted flag)
+  const hotels = (user?.hotels || []).filter(h => !h.isDeleted);
+  // const [isWizardOpen, setIsWizardOpen] = useState(false); // deprecated (replaced by /publicar-hotel page)
   const [fetchedOnce, setFetchedOnce] = useState(false);
 
   useEffect(() => {
     if (!fetchedOnce && user?.id && user.isAdmin) {
-      getHotelsByAdmin(user.id);
+      getHotelsByAdmin(user.id, true);
       setFetchedOnce(true);
     }
   }, [user?.id, user?.isAdmin, getHotelsByAdmin, fetchedOnce]);
@@ -45,7 +50,7 @@ function MyHotels() {
         const hotelId = selectedHotel.id;
         const updatedData = await updateHotel(hotelId, updatedHotel);
         console.log("Hotel actualizado", updatedData);
-        getHotelsByAdmin(user?.id || "");
+        if (user?.id) getHotelsByAdmin(user.id, true);
       } catch (error) {
         console.error("Error al actualizar el hotel:", error);
       }
@@ -53,15 +58,23 @@ function MyHotels() {
     handleCloseModal();
   };
   const handleDeleteHotel = async (hotelId: string) => {
+    if (isDeleting) return; // evita clicks múltiples
+    setIsDeleting(hotelId);
     try {
       const success = await deleteHotel(hotelId);
       if (success) {
-        getHotelsByAdmin(user?.id || "");
+        if (removeHotel) removeHotel(hotelId); // Optimista
+        if (user?.id) getHotelsByAdmin(user.id, true); // Refetch forzado
+        showToast("success", <p>Hotel eliminado</p>, { autoClose: 1800 });
         handleCloseModal();
-        alert("El hotel ha sido eliminado exitosamente.");
+      } else {
+        showToast("error", <p>No se pudo eliminar el hotel.</p>, { autoClose: 2500 });
       }
-    } catch (error) {
+    } catch (error: any) {
       console.error("Error eliminando hotel:", error);
+      showToast("error", <p>Error al eliminar: {error?.message || 'Desconocido'}</p>);
+    } finally {
+      setIsDeleting(null);
     }
   };
 
@@ -72,16 +85,18 @@ function MyHotels() {
           hotel={selectedHotel}
           onClose={handleCloseModal}
           onUpdated={() => getHotelsByAdmin(user?.id || "")}
-          onDeleted={() => getHotelsByAdmin(user?.id || "")}
+          onDeleted={(deletedId: string) => {
+            // Optimistic local removal
+            if (removeHotel) removeHotel(deletedId);
+            // Force refetch in background to ensure sync with backend
+            if (user?.id) getHotelsByAdmin(user.id, true);
+          }}
           refreshHotels={() => getHotelsByAdmin(user?.id || "")}
         />
       )}
       <div className="flex justify-between gap-3 items-center mx-2 py-4 bg-white/90 backdrop-blur supports-[backdrop-filter]:bg-white/70 sticky top-0 z-30 border-b">
         <h1 className="text-2xl sm:text-4xl font-semibold flex-1">Mis hoteles</h1>
-        <button
-          onClick={() => setIsWizardOpen(true)}
-          className="flex px-3 sm:px-4 py-2 sm:py-3 text-white bg-red-500 hover:bg-red-600 active:bg-red-700 rounded-md shadow text-sm sm:text-base items-center"
-        >
+        <Link href="/publicar-hotel" className="flex px-3 sm:px-4 py-2 sm:py-3 text-white bg-red-500 hover:bg-red-600 active:bg-red-700 rounded-md shadow text-sm sm:text-base items-center">
           <Image
             src={'/create2.png'}
             alt='Crear'
@@ -91,11 +106,9 @@ function MyHotels() {
           />
           <span className="hidden xs:inline sm:inline">Publicar hotel</span>
           <span className="sm:hidden">Publicar</span>
-        </button>
+        </Link>
       </div>
-      {isWizardOpen && (
-        <HotelCreationWizard onFinished={() => setIsWizardOpen(false)} />
-      )}
+      {/* Wizard modal removed; navigation handled by link */}
   <div className="px-2 sm:px-4 md:px-6 pt-4 flex-1 w-full overflow-x-hidden">
     <div className="w-full mx-auto max-w-[1400px] md:max-w-[1300px]">
           <Swiper

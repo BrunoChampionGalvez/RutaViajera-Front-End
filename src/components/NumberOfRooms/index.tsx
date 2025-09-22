@@ -7,7 +7,8 @@ import { Field, Form, Formik, ErrorMessage } from "formik";
 import Link from "next/link";
 import Image from "next/image"
 import { MouseEventHandler, useContext, useEffect, useState } from "react";
-import Swal from "sweetalert2";
+import Swal from "sweetalert2"; // kept for warnings earlier, but success/info modals replaced by toasts
+import { showToast } from '@/lib/toast';
 
 interface RoomNumberFormProps {
   onRoomsCreated?: () => void;
@@ -158,7 +159,22 @@ export default function RoomNumberForm({ onRoomsCreated, hotelIdOverride, draftR
                   <div className="flex flex-col gap-3 w-full mt-4">
                     <div className="flex items-center justify-between">
                       <span className="text-sm text-gray-700">Pendientes totales: {Object.values(roomsByType).reduce((a,b)=>a+b.length,0)}</span>
-                      <button
+                    </div>
+                    {showRooms && (
+                      <ul className="border rounded-md p-2 max-h-48 overflow-y-auto space-y-1 text-sm">
+                        {Object.entries(roomsByType).flatMap(([rtId, list]) => {
+                          const rtName = roomTypes.find(r=>String(r.id)===rtId)?.name || rtId;
+                          return list.map(r => (
+                            <li key={rtId+':'+r} className="flex items-center justify-between bg-gray-50 px-2 py-1 rounded">
+                              <span className="flex flex-col"><b>{r}</b><span className="text-[10px] text-gray-500">{rtName}</span></span>
+                              <button type="button" className="text-xs text-red-500 hover:text-red-700"
+                                onClick={() => setRoomsByType(prev => { const filtered = (prev[rtId]||[]).filter(x=>x!==r); const clone = { ...prev, [rtId]: filtered }; if(filtered.length===0) delete clone[rtId]; onDraftRoomsChange?.(clone); return clone; })}>Eliminar</button>
+                            </li>
+                          ));
+                        })}
+                      </ul>
+                    )}
+                    <button
                         type="button"
                         disabled={creatingBatch}
                         className="btn-secondary flex items-center justify-center"
@@ -188,33 +204,19 @@ export default function RoomNumberForm({ onRoomsCreated, hotelIdOverride, draftR
                           setRoomsByType(newState);
                           onDraftRoomsChange?.(newState);
                           setCreatingBatch(false);
-                          const lines = summary.map(s=>`<b>${s.name}</b>: ${s.successes} ${s.failedRooms.length?` (${s.failedRooms.slice(0,5).join(', ')}${s.failedRooms.length>5?'...':''})`:''}`).join('<br/>');
-                          Swal.fire({
-                            icon: anyFailure ? 'info' : 'success',
-                            title: anyFailure ? 'Resultado parcial' : 'Habitaciones creadas',
-                            html: lines || 'Nada que crear',
-                            width: 600,
-                          });
+                          const plainSummary = summary.map(s=>`${s.name}: ${s.successes}${s.failedRooms.length?` (fallidas: ${s.failedRooms.slice(0,3).join(', ')}${s.failedRooms.length>3?'...':''})`:''}`).join(' | ');
+                          if (!summary.length) {
+                            showToast('info', <p>Nada que crear</p>);
+                          } else if (anyFailure) {
+                            showToast('warning', <p>Resultado parcial - {plainSummary}</p>, { autoClose: 6000 });
+                          } else {
+                            showToast('success', <p>Habitaciones creadas - {plainSummary}</p>, { autoClose: 4000 });
+                          }
                           if (!anyFailure && onRoomsCreated) onRoomsCreated();
                         }}
                       >
                         {creatingBatch ? 'Creando...' : 'Crear Habitaciones'}
                       </button>
-                    </div>
-                    {showRooms && (
-                      <ul className="border rounded-md p-2 max-h-48 overflow-y-auto space-y-1 text-sm">
-                        {Object.entries(roomsByType).flatMap(([rtId, list]) => {
-                          const rtName = roomTypes.find(r=>String(r.id)===rtId)?.name || rtId;
-                          return list.map(r => (
-                            <li key={rtId+':'+r} className="flex items-center justify-between bg-gray-50 px-2 py-1 rounded">
-                              <span className="flex flex-col"><b>{r}</b><span className="text-[10px] text-gray-500">{rtName}</span></span>
-                              <button type="button" className="text-xs text-red-500 hover:text-red-700"
-                                onClick={() => setRoomsByType(prev => { const filtered = (prev[rtId]||[]).filter(x=>x!==r); const clone = { ...prev, [rtId]: filtered }; if(filtered.length===0) delete clone[rtId]; onDraftRoomsChange?.(clone); return clone; })}>Eliminar</button>
-                            </li>
-                          ));
-                        })}
-                      </ul>
-                    )}
                     {lastBatchFailures.length > 0 && (
                       <div className="mt-3 w-full">
                         <p className="text-sm font-semibold text-red-600 mb-1">Errores:</p>

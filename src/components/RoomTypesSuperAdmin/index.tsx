@@ -1,6 +1,8 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { showToast } from '@/lib/toast';
+import Swal from 'sweetalert2';
 import Link from "next/link";
 import { useContext } from "react";
 import { SuperAdminContext } from "../../context/superAdminContext";
@@ -112,11 +114,13 @@ const RoomTypesHotel = ({ hotelId, searchQuery }: RoomTypesHotelProps) => {
                     );
                     setRoomTypes(updatedRoomTypes);
                     handleCloseModal();
+                    showToast('success', <p>Tipo de habitación actualizado</p>);
                 } else {
-                    alert('Hubo un error al actualizar el tipo de habitación.')
+                    showToast('error', <p>Hubo un error al actualizar el tipo de habitación.</p>, { autoClose: 3500 });
                 }
             } catch (error) {
                 console.log("Error updating room type details: ", error);
+                showToast('error', <p>Error inesperado al actualizar</p>);
             }
         }
     };
@@ -166,18 +170,28 @@ const RoomTypesHotel = ({ hotelId, searchQuery }: RoomTypesHotelProps) => {
                                 <button
                                     className="bg-[#f83f3a] text-white rounded-md p-1 px-2 hover:bg-[#e63946]"
                                     onClick={async () => {
-                                        const confirmed = window.confirm("¿Estás seguro que quieres eliminar este tipo de habitación?");
-                                        if (!confirmed) return;
+                                        const res = await Swal.fire({
+                                            title: '¿Eliminar tipo?',
+                                            text: 'Esta acción no se puede deshacer',
+                                            icon: 'warning',
+                                            showCancelButton: true,
+                                            confirmButtonText: 'Sí, eliminar',
+                                            cancelButtonText: 'Cancelar',
+                                            confirmButtonColor: '#d33'
+                                        });
+                                        if (!res.isConfirmed) return;
                                         try {
                                             const response = await fetchDeleteRoomTypeOfHotel(roomType.id as string);
                                             if (response) {
                                                 const hotel = await fetchHotelById(hotelId);
                                                 if (hotel) setRoomTypes(hotel?.roomstype);
+                                                showToast('success', <p>Tipo de habitación eliminado</p>);
                                             } else {
-                                                alert('Hubo un error al eliminar el tipo de habitación.')
+                                                showToast('error', <p>Hubo un error al eliminar el tipo de habitación.</p>, { autoClose: 3500 });
                                             }
                                         } catch (error) {
                                             console.log("Error deleting room type: ", error);
+                                            showToast('error', <p>Error inesperado eliminando</p>);
                                         }
                                     }}
                                 >

@@ -11,35 +11,7 @@ import { useRouter } from "next/navigation";
 import ForgotPassword from "../ForgotPassword";
 import GoogleLoginButton from "../GoogleLoginButton";
 import { SuperAdminContext } from "@/context/superAdminContext";
-import "react-toastify/dist/ReactToastify.css";
-import { toast, ToastContent, ToastOptions, Slide, Id } from "react-toastify";
-
-export const defaultToastOptions: ToastOptions = {
-  position: "top-center",
-  autoClose: 1000,
-  hideProgressBar: false,
-  closeOnClick: true,
-  pauseOnHover: false,
-  draggable: true,
-  progress: undefined,
-  theme: "colored",
-  transition: Slide,
-};
-type ToastType = "success" | "error" | "info" | "warning" | "default";
-
-export const showToast = (
-  type: ToastType,
-  content: ToastContent,
-  options: Partial<ToastOptions> = {}
-): Id | undefined => {
-  const optionsToApply = { ...defaultToastOptions, ...options };
-  switch (type) {
-    case "success":
-      return toast.success(content, optionsToApply);
-    case "error":
-      return toast.error(content, optionsToApply);
-  }
-};
+import { showToast } from "@/lib/toast";
 export default function LoginForm() {
   const { login, user } = useContext(UserContext);
   const { signIn } = useContext(SuperAdminContext);
@@ -61,7 +33,7 @@ export default function LoginForm() {
       } else {
         const access = await signIn(values);
         if (access) {
-          alert("Iniciaste sesión correctamente");
+          showToast("success", <p>¡Bienvenido Super Admin!</p>);
           router.push("/superAdmin");
         } else {
           showToast("error", <p>Correo o contraseña incorrectos</p>);

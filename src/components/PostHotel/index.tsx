@@ -6,6 +6,7 @@ import { Formik, Form, Field, ErrorMessage } from "formik";
 import Image from "next/image";
 import continueImage from "../../../public/continue.png";
 import { useContext, useState } from "react";
+import { showToast } from "@/lib/toast";
 import useGoogleMapsData from "@/lib/googleMaps/googleMapsData";
 import { GoogleMap, Marker } from "@react-google-maps/api";
 import { useRouter } from "next/navigation";
@@ -265,7 +266,7 @@ const HotelRegister: React.FC<HotelRegisterProps> = ({ onHotelCreated, suppressR
   ) => {
     const token = localStorage.getItem("token");
     if (!token) {
-      alert("Hubo un problema. Por favor, inicie sesión de nuevo.");
+      showToast("warning", <p>Sesión no válida. Inicia sesión nuevamente.</p>, { autoClose: 3000 });
       setSubmitting(false);
       return;
     }
@@ -273,7 +274,7 @@ const HotelRegister: React.FC<HotelRegisterProps> = ({ onHotelCreated, suppressR
     // Validación mínima: sólo requerimos que exista user.id. El rol se valida en el backend.
     if (!user?.id) {
       console.error("Hotel creation blocked: invalid user id", { user });
-      alert("No se pudo identificar tu usuario. Inicia sesión nuevamente.");
+      showToast("error", <p>No se pudo identificar tu usuario. Inicia sesión nuevamente.</p>, { autoClose: 4000 });
       setSubmitting(false);
       return;
     }
@@ -320,29 +321,56 @@ const HotelRegister: React.FC<HotelRegisterProps> = ({ onHotelCreated, suppressR
         console.log('createdHotel:', createdHotel);
         
         addNewHotel(createdHotel);
+        // Fuerza actualización inmediata de la lista en contexto para que /dashboard/myhotels refleje el nuevo hotel
+        try {
+          if (user?.id && user.isAdmin && typeof (window as any) !== 'undefined') {
+            // Intentar acceso a getHotelsByAdmin si existe en contexto (defensivo, en caso de refactors)
+            const maybeGetHotels = (UserContext as any)?._currentValue?.getHotelsByAdmin;
+            if (typeof maybeGetHotels === 'function') {
+              await maybeGetHotels(user.id, true);
+            }
+          }
+        } catch (e) {
+          console.warn('No se pudo forzar refresco de hoteles tras creación', e);
+        }
         setHotelBeingCreated(createdHotel)
         // Callback externa (wizard) o flujo original
         if (onHotelCreated) {
           onHotelCreated(createdHotel);
         }
         if (!suppressRedirect) {
-          alert("Hotel registrado exitosamente");
+          showToast("success", <p>Hotel registrado exitosamente</p>);
           router.push(`/post-hotel-types/${createdHotel.id}`);
         }
       } else {
-        alert("Error al registrar el hotel");
+        showToast("error", <p>Error al registrar el hotel</p>, { autoClose: 4000 });
       }
     } catch (error: any) {
       console.error("Error al registrar el hotel (detalle):", error);
-      const rawMsg = error?.message || "Error desconocido";
-      if (rawMsg.includes('hotelero') || rawMsg.includes('Hotel admin id ausente')) {
-        alert(rawMsg);
+      const rawMsg: string = error?.message || "Error desconocido";
+
+      // Detección específica de duplicados (nombre y/o email)
+      const nameConflict = /this hotel exists/i.test(rawMsg);
+      const emailConflict = /this email exists/i.test(rawMsg);
+      if (nameConflict || emailConflict) {
+        let mensaje: string;
+        if (nameConflict && emailConflict) {
+          mensaje = "El nombre y el email ya están en uso por otro hotel."; // (Caso poco probable dado el flujo backend)
+        } else if (nameConflict) {
+          mensaje = "Ya existe un hotel con ese nombre.";
+        } else {
+          mensaje = "Ya existe un hotel con ese email.";
+        }
+        showToast("error", <p>{mensaje}</p>, { autoClose: 3000 });
+      } else if (rawMsg.includes('hotelero') || rawMsg.includes('Hotel admin id ausente')) {
+        showToast("error", <p>{rawMsg}</p>, { autoClose: 4000 });
       } else if (/404/.test(rawMsg)) {
-        alert("No se pudo crear el hotel: el ID de hotelero no existe o tu sesión está desactualizada. Cierra sesión y vuelve a entrar como hotelero.");
+        showToast("error", <p>No se pudo crear el hotel: el ID de hotelero no existe o tu sesión está desactualizada. Cierra sesión y vuelve a entrar como hotelero.</p>, { autoClose: 5000 });
       } else if (/401|403/.test(rawMsg)) {
-        alert("No autorizado. Vuelve a iniciar sesión.");
+        showToast("error", <p>No autorizado. Vuelve a iniciar sesión.</p>, { autoClose: 4000 });
       } else {
-        alert(rawMsg.startsWith('Error en la solicitud') ? rawMsg : `Hubo un error al registrar el hotel. ${rawMsg}`);
+        const finalMsg = rawMsg.startsWith('Error en la solicitud') ? rawMsg : `Hubo un error al registrar el hotel. ${rawMsg}`;
+        showToast("error", <p>{finalMsg}</p>, { autoClose: 5000 });
       }
     } finally {
       setSubmitting(false);

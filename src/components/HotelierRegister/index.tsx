@@ -12,7 +12,7 @@ import { signIn, useSession } from "next-auth/react";
 import GoogleHotelierRegisterButton from "../GoogleHotelierRegisterButton";
 import "react-toastify/dist/ReactToastify.css";
 import { toast, ToastContent, ToastOptions, Slide, Id } from "react-toastify";
-import { showToast } from "../LoginForm";
+import { showToast } from "@/lib/toast";
 
 export default function HotelierRegisterForm() {
   const { hotelierRegister } = useContext(UserContext);

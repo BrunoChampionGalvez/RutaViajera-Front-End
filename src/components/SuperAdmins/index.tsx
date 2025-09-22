@@ -3,6 +3,7 @@ import { Formik, Field, Form, ErrorMessage } from 'formik';
 import * as Yup from 'yup';
 import axios from 'axios';
 import Sidebar from '../SidebarSuperAdmin';
+import { showToast } from '@/lib/toast';
 
 const SuperAdminSignUpForm: React.FC = () => {
     const [isSidebarVisible, setSidebarVisible] = useState(false);
@@ -60,10 +61,10 @@ const SuperAdminSignUpForm: React.FC = () => {
                                 console.log(response);
 
                                 if (!response.ok) {
-                                    alert('Hubo un problema al crear el super admin, intenta nuevamente.');
+                                    showToast('error', <p>Hubo un problema al crear el super admin, intenta nuevamente.</p>, { autoClose: 4000 });
                                     throw new Error('Error en la solicitud.');
                                 }
-                                alert('Super Admin creado exitosamente.');
+                                showToast('success', <p>Super Admin creado exitosamente.</p>);
                             } catch (error) {
                                 console.error('Error during sign up:', error);
                             } finally {

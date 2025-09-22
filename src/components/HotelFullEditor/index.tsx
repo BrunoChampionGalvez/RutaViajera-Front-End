@@ -1,6 +1,7 @@
 "use client";
 import { useEffect, useState, useCallback } from 'react';
 import Swal from 'sweetalert2';
+import { showToast } from '@/lib/toast';
 import {
   IAdminHotel,
   IRoomTypeRegister,
@@ -150,6 +151,7 @@ function RoomTypeCreateForm({ rtName, setRtName, rtCapacity, setRtCapacity, rtBe
 
 export default function HotelFullEditor({ hotel, onClose, onUpdated, onDeleted, refreshHotels }: HotelFullEditorProps) {
   const [activeTab, setActiveTab] = useState<TabKey>('hotel');
+    const [deleting, setDeleting] = useState(false);
   const [loading, setLoading] = useState(false);
 
   // Hotel basic fields
@@ -203,6 +205,27 @@ export default function HotelFullEditor({ hotel, onClose, onUpdated, onDeleted, 
       setCity(hotel.city);
       setCountry(hotel.country);
       setServices(hotel.services.join(', '));
+      // Reset room types / rooms related state when hotel changes so we don't leak previous hotel's data.
+      setRoomTypes([]);
+      setSelectedRoomTypeId(null);
+      setRooms([]);
+      setPendingRooms([]);
+      setEditingRoomTypeId(null);
+      setEditingRoomTypeDraft({});
+      setEditingRoomId(null);
+      setEditingRoomNumber('');
+      // Also clear creation / upload forms to avoid accidental reuse.
+      setRtName('');
+      setRtCapacity('');
+      setRtBeds('');
+      setRtBaths('');
+      setRtPrice('');
+      setRtImages('');
+      setRtUploadedUrls([]);
+      setRtImageFiles([]);
+      setEditingUploadFiles([]);
+      setRtUploading(false);
+      setEditingUploading(false);
     }
   }, [hotel]);
 
@@ -275,11 +298,11 @@ export default function HotelFullEditor({ hotel, onClose, onUpdated, onDeleted, 
         services: services.split(',').map(s => s.trim()).filter(Boolean),
       } as Partial<IAdminHotel>;
       await updateHotel(hotel.id, updated);
-      Swal.fire('Guardado', 'Hotel actualizado', 'success');
+  showToast('success', <p>Hotel actualizado</p>);
       onUpdated?.(updated);
       refreshHotels();
     } catch (err: any) {
-      Swal.fire('Error', err.message || 'No se pudo actualizar el hotel', 'error');
+      showToast('error', <p>{err.message || 'No se pudo actualizar el hotel'}</p>, { autoClose: 4000 });
     } finally {
       setLoading(false);
     }
@@ -294,20 +317,26 @@ export default function HotelFullEditor({ hotel, onClose, onUpdated, onDeleted, 
       showCancelButton: true,
       confirmButtonColor: '#d33',
       confirmButtonText: 'Eliminar',
-      cancelButtonText: 'Cancelar'
+      cancelButtonText: 'Cancelar',
+      cancelButtonColor: '#d1d5db' // light gray (Tailwind gray-300)
     });
     if (!res.isConfirmed) return;
     try {
+      if (deleting) return;
+      setDeleting(true);
       // We already have deleteHotel in parent MyHotels logic; reuse updateHotel? We'll call fetch directly through updateHotel? Simpler: use fetch inside here.
       const token = localStorage.getItem('token');
       const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/hotels/${hotel.id}`, { method: 'DELETE', headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` } });
       if (!response.ok) throw new Error(`Status ${response.status}`);
-      Swal.fire('Eliminado', 'Hotel eliminado', 'success');
+      // Optimistic removal + toast
       onDeleted?.(hotel.id);
       refreshHotels();
+      showToast('success', <p>Hotel eliminado</p>);
       onClose();
     } catch (err: any) {
-      Swal.fire('Error', err.message || 'No se pudo eliminar', 'error');
+      showToast('error', <p>{err.message || 'No se pudo eliminar'}</p>, { autoClose: 4000 });
+    } finally {
+      setDeleting(false);
     }
   };
 
@@ -319,7 +348,7 @@ export default function HotelFullEditor({ hotel, onClose, onUpdated, onDeleted, 
       setRtUploadedUrls(prev => [...prev, ...urls]);
       setRtImageFiles([]);
     } catch (err: any) {
-      Swal.fire('Error', err.message || 'Fallo la subida de imágenes', 'error');
+      showToast('error', <p>{err.message || 'Fallo la subida de imágenes'}</p>, { autoClose: 4000 });
     } finally {
       setRtUploading(false);
     }
@@ -332,7 +361,7 @@ export default function HotelFullEditor({ hotel, onClose, onUpdated, onDeleted, 
   const handleAddRoomType = async () => {
     if (!hotel) return;
     if (!rtName || !rtPrice) {
-      Swal.fire('Faltan datos', 'Nombre y precio son obligatorios', 'info');
+      showToast('warning', <p>Nombre y precio son obligatorios</p>, { autoClose: 2500 });
       return;
     }
     try {
@@ -349,11 +378,11 @@ export default function HotelFullEditor({ hotel, onClose, onUpdated, onDeleted, 
         hotelId: hotel.id as any,
       } as any;
       await postRoomType(payload);
-      Swal.fire('Éxito', 'Tipo de habitación creado', 'success');
+  showToast('success', <p>Tipo de habitación creado</p>);
       setRtName(''); setRtPrice(''); setRtCapacity(''); setRtBeds(''); setRtBaths(''); setRtImages(''); setRtUploadedUrls([]);
       loadRoomTypes();
     } catch (err: any) {
-      Swal.fire('Error', err.message || 'No se pudo crear el tipo de habitación', 'error');
+      showToast('error', <p>{err.message || 'No se pudo crear el tipo de habitación'}</p>, { autoClose: 4000 });
     }
   };
 
@@ -361,7 +390,7 @@ export default function HotelFullEditor({ hotel, onClose, onUpdated, onDeleted, 
     const trimmed = newRoomNumber.trim();
     if (!trimmed) return;
     if (rooms.some(r => r.roomNumber === trimmed) || pendingRooms.includes(trimmed)) {
-      Swal.fire('Duplicado', 'Ese número de habitación ya existe o está pendiente.', 'info');
+      showToast('info', <p>Ese número de habitación ya existe o está pendiente.</p>, { autoClose: 2500 });
       return;
     }
     setPendingRooms(pr => [...pr, trimmed]);
@@ -394,11 +423,11 @@ export default function HotelFullEditor({ hotel, onClose, onUpdated, onDeleted, 
     if (!editingRoomTypeId) return;
     try {
       await updateRoomType(editingRoomTypeId, editingRoomTypeDraft as any);
-      Swal.fire('Actualizado', 'Tipo de habitación actualizado', 'success');
+  showToast('success', <p>Tipo de habitación actualizado</p>);
       cancelEditRoomType();
       loadRoomTypes();
     } catch (err: any) {
-      Swal.fire('Error', err.message || 'No se pudo actualizar', 'error');
+      showToast('error', <p>{err.message || 'No se pudo actualizar'}</p>, { autoClose: 4000 });
     }
   };
 
@@ -410,7 +439,7 @@ export default function HotelFullEditor({ hotel, onClose, onUpdated, onDeleted, 
       setEditingRoomTypeDraft(d => ({ ...d, images: [ ...(d.images||[]), ...urls ] }));
       setEditingUploadFiles([]);
     } catch (err: any) {
-      Swal.fire('Error', err.message || 'Fallo la subida de imágenes', 'error');
+      showToast('error', <p>{err.message || 'Fallo la subida de imágenes'}</p>, { autoClose: 4000 });
     } finally {
       setEditingUploading(false);
     }
@@ -445,11 +474,10 @@ export default function HotelFullEditor({ hotel, onClose, onUpdated, onDeleted, 
       // Optionally re-fetch to stay in sync, but keep it light unless needed
       // If server performed a soft delete (isDeleted flag), our list fetch should exclude it; schedule a silent refresh
       loadRoomTypes();
-      Swal.fire('Eliminado', 'Tipo de Habitación eliminado', 'success');
+      showToast('success', <p>Tipo de habitación eliminado</p>);
     } catch (err: any) {
-      // Revert optimistic change if failed
       loadRoomTypes();
-      Swal.fire('Error', err.message || 'No se pudo eliminar', 'error');
+      showToast('error', <p>{err.message || 'No se pudo eliminar'}</p>, { autoClose: 4000 });
     }
   };
 
@@ -461,8 +489,8 @@ export default function HotelFullEditor({ hotel, onClose, onUpdated, onDeleted, 
   };
 
   const savePendingRooms = async () => {
-    if (!selectedRoomTypeId) return Swal.fire('Selecciona un tipo de habitación', '', 'info');
-    if (pendingRooms.length === 0) return Swal.fire('Sin habitaciones nuevas', 'Agrega al menos una antes de guardar.', 'info');
+  if (!selectedRoomTypeId) { showToast('info', <p>Selecciona un tipo de habitación</p>); return; }
+  if (pendingRooms.length === 0) { showToast('info', <p>Agrega al menos una habitación</p>); return; }
     try {
       const result = await postRoom(pendingRooms, selectedRoomTypeId);
       let msg = `${result.successes.length} creadas`;
@@ -470,11 +498,11 @@ export default function HotelFullEditor({ hotel, onClose, onUpdated, onDeleted, 
         const failedList = result.failures.slice(0,5).map(f=>f.roomNumber).join(', ');
         msg += `, ${result.failures.length} fallidas (${failedList}${result.failures.length>5?'...':''})`;
       }
-      Swal.fire('Resultado', msg, result.failures.length ? 'warning' : 'success');
+  showToast(result.failures.length ? 'warning' : 'success', <p>{msg}</p>, { autoClose: 4000 });
       setPendingRooms([]);
       loadRooms(selectedRoomTypeId);
     } catch (err: any) {
-      Swal.fire('Error', err.message || 'No se pudieron crear las habitaciones', 'error');
+      showToast('error', <p>{err.message || 'No se pudieron crear las habitaciones'}</p>, { autoClose: 4000 });
     }
   };
 
@@ -487,11 +515,11 @@ export default function HotelFullEditor({ hotel, onClose, onUpdated, onDeleted, 
     if (!editingRoomId) return;
     try {
       await updateRoom(editingRoomId, { roomNumber: editingRoomNumber });
-      Swal.fire('Actualizado', 'Habitación actualizada', 'success');
+  showToast('success', <p>Habitación actualizada</p>);
       cancelEditRoom();
       if (selectedRoomTypeId) loadRooms(selectedRoomTypeId);
     } catch (err: any) {
-      Swal.fire('Error', err.message || 'No se pudo actualizar', 'error');
+      showToast('error', <p>{err.message || 'No se pudo actualizar'}</p>, { autoClose: 4000 });
     }
   };
 
@@ -567,7 +595,9 @@ export default function HotelFullEditor({ hotel, onClose, onUpdated, onDeleted, 
         </div>
       </div>
       <div className="flex justify-between pt-2">
-        <button onClick={handleDeleteHotel} className="text-red-600 text-sm">Eliminar hotel</button>
+        <button onClick={handleDeleteHotel} disabled={deleting} className="text-red-600 text-sm disabled:opacity-50">
+          {deleting ? 'Eliminando...' : 'Eliminar hotel'}
+        </button>
         <div className="flex gap-2">
           <button onClick={onClose} className="px-4 py-2 rounded bg-gray-200">Cancelar</button>
           <button disabled={loading} onClick={handleSaveHotel} className="px-4 py-2 rounded bg-red-500 text-white disabled:opacity-50">{loading ? 'Guardando...' : 'Guardar'}</button>
@@ -741,8 +771,9 @@ export default function HotelFullEditor({ hotel, onClose, onUpdated, onDeleted, 
   );
 
   return (
-    <div className="fixed inset-0 z-50 flex items-start justify-center overflow-y-auto bg-black/50 p-4">
-      <div className="bg-white w-full max-w-5xl rounded-lg shadow-lg p-6 relative animate-fade-in">
+    <div className="fixed inset-0 z-50 flex items-start md:items-center justify-center overflow-y-auto bg-black/50 p-4">
+      {/* Added top margin on small screens so the modal isn't hidden under sticky nav; center on md+ */}
+      <div className="bg-white w-full max-w-5xl rounded-lg shadow-lg p-6 relative animate-fade-in mt-16 md:mt-0">
         <h2 className="text-2xl font-bold mb-2">Editar Hotel: <span className="text-red-600">{hotel.name}</span></h2>
         {renderTabs()}
         <div className="min-h-[300px]">

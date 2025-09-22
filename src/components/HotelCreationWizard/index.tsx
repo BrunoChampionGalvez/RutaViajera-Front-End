@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect, useRef } from "react";
 import dynamic from "next/dynamic";
 import TypesRegister from "@/components/PostHotelTypes";
 import RoomNumberForm from "@/components/NumberOfRooms";
@@ -14,12 +14,16 @@ type Step = typeof steps[number];
 
 interface HotelCreationWizardProps {
   onFinished?: () => void;
+  asPage?: boolean; // if true, render as normal page section (no fixed modal styles)
 }
 
-export default function HotelCreationWizard({ onFinished }: HotelCreationWizardProps) {
+export default function HotelCreationWizard({ onFinished, asPage }: HotelCreationWizardProps) {
   const [currentStep, setCurrentStep] = useState<Step>("Hotel");
   const [createdHotel, setCreatedHotel] = useState<IAdminHotel | null>(null);
   const [savedRoomTypes, setSavedRoomTypes] = useState<Partial<IRoomTypeRegister>[]>([]);
+  // Dynamic max height calculation respecting footer (if present)
+  const [footerOffset, setFooterOffset] = useState<number>(0);
+  const containerRef = useRef<HTMLDivElement | null>(null);
 
   // Local (unsaved) draft state so inputs persist when navigating backwards
   const [hotelDraft, setHotelDraft] = useState<any>({});
@@ -94,11 +98,60 @@ export default function HotelCreationWizard({ onFinished }: HotelCreationWizardP
     }
   };
 
+  // Measure footer height (and optional bottom margins) to compute available viewport space.
+  useEffect(() => {
+    const compute = () => {
+      const footer: HTMLElement | null = document.querySelector('footer, [data-footer], #footer');
+      const height = footer ? footer.getBoundingClientRect().height : 0;
+      setFooterOffset(height);
+    };
+    compute();
+    window.addEventListener('resize', compute);
+    const ro = new ResizeObserver(compute);
+    if (document.body) ro.observe(document.body);
+    return () => { window.removeEventListener('resize', compute); ro.disconnect(); };
+  }, []);
+
+  // Page mode (not fixed overlay)
+  if (asPage) {
+    return (
+      <div className="w-full max-w-6xl mx-auto px-4 py-6 flex flex-col gap-4">
+        <div className="flex items-center justify-between">
+          <h2 className="text-2xl font-bold">Publicar Hotel</h2>
+          <div className="flex gap-2">
+            <button onClick={reset} className="text-sm px-3 py-1 border rounded hover:bg-gray-100">Reiniciar</button>
+            <button onClick={onFinished} className="text-sm px-3 py-1 border rounded hover:bg-gray-100">Cerrar</button>
+          </div>
+        </div>
+        <div className="flex gap-4 overflow-x-auto pb-2">
+          {steps.map(step => {
+            const active = step === currentStep;
+            const enabled = canAccessStep(step);
+            return (
+              <button
+                key={step}
+                disabled={!enabled}
+                onClick={() => enabled && setCurrentStep(step)}
+                className={`text-sm font-medium px-4 py-2 rounded-full border transition ${active ? 'bg-red-500 border-red-500 text-white' : enabled ? 'border-gray-400 text-gray-700 hover:bg-gray-100' : 'border-gray-200 text-gray-400 cursor-not-allowed'}`}
+              >
+                {step}
+              </button>
+            );
+          })}
+        </div>
+        <div className="rounded-lg p-6 bg-white shadow-sm">
+          {renderStep()}
+        </div>
+      </div>
+    );
+  }
+
+  // Modal overlay (legacy) mode
   return (
-    // Positioned below the global top navbar (h-16) and to the right of the desktop sidebar (md:w-40 lg:w-44)
-    // On mobile it still spans full width under the navbar.
     <div
-      className="fixed left-0 right-0 top-16 bottom-0 md:left-40 lg:left-44 z-[95] flex flex-col bg-white shadow-xl border-l md:rounded-tl-xl overflow-hidden"
+      ref={containerRef}
+      className="fixed left-0 right-0 top-16 md:left-40 lg:left-44 z-[95] flex flex-col h-full bg-white shadow-xl border-l md:rounded-tl-xl"
+      style={{ bottom: (footerOffset || 0) + 8 + 'px' }}
     >
       <div className="flex items-center justify-between px-6 py-4 border-b">
         <h2 className="text-2xl font-bold">Publicar Hotel</h2>
@@ -107,7 +160,7 @@ export default function HotelCreationWizard({ onFinished }: HotelCreationWizardP
           <button onClick={onFinished} className="text-sm px-3 py-1 border rounded hover:bg-gray-100">Cerrar</button>
         </div>
       </div>
-      <div className="px-6 py-3 flex gap-4 overflow-x-auto">
+      <div className="px-6 py-3 flex gap-4 overflow-x-auto shrink-0">
         {steps.map(step => {
           const active = step === currentStep;
           const enabled = canAccessStep(step);
@@ -123,17 +176,12 @@ export default function HotelCreationWizard({ onFinished }: HotelCreationWizardP
           );
         })}
       </div>
-      <div className="p-6 flex-1 overflow-y-auto">
+      <div
+        className="p-6 overflow-y-auto"
+        style={{ maxHeight: `calc(100vh - ${(footerOffset || 0)}px - 4rem - 7.5rem - 8px)` }}
+      >
         {renderStep()}
       </div>
-      {currentStep === "Habitaciones" && (
-        <div className="px-6 pb-6 flex justify-end">
-          <button
-            onClick={() => { onFinished && onFinished(); }}
-            className="btn-secondary"
-          >Finalizar</button>
-        </div>
-      )}
     </div>
   );
 }

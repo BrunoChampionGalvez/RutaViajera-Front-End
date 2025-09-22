@@ -44,6 +44,7 @@ export const UserContext = createContext<IUserContextType>({
   getBookings: async () => { },
   getHotelsByAdmin: async () => { },
   addNewHotel: async () => { },
+  removeHotel: async () => { },
   getBookingsByHotel: async () => [],
   bookings: [],
   logOut: () => { },
@@ -162,11 +163,21 @@ export const UserProvider = ({ children }: { children: React.ReactNode }) => {
     });
   };
 
+  const removeHotel = (hotelId: string) => {
+    setUser(prev => {
+      if (!prev) return prev;
+      return { ...prev, hotels: (prev.hotels || []).filter(h => h.id !== hotelId) };
+    });
+  };
+
   // Cache sencilla para evitar spam de peticiones si múltiples componentes disparan la misma carga
   const adminHotelsCacheRef = (globalThis as any).__adminHotelsCacheRef || ((globalThis as any).__adminHotelsCacheRef = new Map());
-  const getHotelsByAdmin = useCallback(async (adminId: string) => {
+  const getHotelsByAdmin = useCallback(async (adminId: string, forceRefresh: boolean = false) => {
     if (!adminId) return;
     try {
+      if (forceRefresh) {
+        adminHotelsCacheRef.delete(adminId);
+      }
       if (adminHotelsCacheRef.has(adminId)) {
         const cached = adminHotelsCacheRef.get(adminId);
         setUser(prev => {
@@ -341,6 +352,7 @@ export const UserProvider = ({ children }: { children: React.ReactNode }) => {
         getBookings,
         getHotelsByAdmin,
         addNewHotel,
+        removeHotel,
         getBookingsByHotel,
         bookings,
         logOut,

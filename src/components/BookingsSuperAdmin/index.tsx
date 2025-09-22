@@ -147,7 +147,7 @@ const BookingsSuperAdmin = ({ customerId }: BookingsSuperAdminProps) => {
 
                     {paginatedBookings.length > 0 ? paginatedBookings.map((booking) => (
                         <div className="w-full">
-                            <div key={booking.id} className="w-full m-4 p-4 relative p-4 bg-gray-100 rounded-lg shadow-md flex flex-col">
+                            <div key={booking.id} className="w-full m-4 relative p-4 bg-gray-100 rounded-lg shadow-md flex flex-col">
                                 <div className="mb-2">
                                     <div className="flex p-2">
                                         <p className="font-bold mr-2">Fecha:</p>

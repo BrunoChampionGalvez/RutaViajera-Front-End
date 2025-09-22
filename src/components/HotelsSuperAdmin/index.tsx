@@ -4,6 +4,8 @@ import { useEffect, useState } from "react";
 import Link from "next/link";
 import { useContext } from "react";
 import { SuperAdminContext } from "../../context/superAdminContext";
+import { showToast } from '@/lib/toast';
+import Swal from 'sweetalert2';
 import { IHotelOfSuperAdmin } from "@/interfaces";
 import Sidebar from "../SidebarSuperAdmin";
 
@@ -121,8 +123,9 @@ const HotelsSuperAdmin = ({ hotelAdminId, searchQuery }: HotelsSuperAdminProps) 
                     );
                     setHotels(updatedHotels);
                     handleCloseModal();
+                    showToast('success', <p>Hotel actualizado</p>);
                 } else {
-                    alert('Hubo un error al actualizar el hotel.')
+                    showToast('error', <p>Hubo un error al actualizar el hotel.</p>, { autoClose: 3500 });
                 }
             } catch (error) {
                 console.log("Error updating hotel details: ", error);
@@ -180,18 +183,28 @@ const HotelsSuperAdmin = ({ hotelAdminId, searchQuery }: HotelsSuperAdminProps) 
                                 <button
                                     className="bg-[#f83f3a] text-white rounded-md p-1 px-2 hover:bg-[#e63946]"
                                     onClick={async () => {
-                                        const confirmed = window.confirm("¿Estás seguro que quieres eliminar este administrador de hotel?");
-                                        if (!confirmed) return;
+                                        const res = await Swal.fire({
+                                            title: '¿Eliminar hotel?',
+                                            text: 'Esta acción no se puede deshacer',
+                                            icon: 'warning',
+                                            showCancelButton: true,
+                                            confirmButtonText: 'Sí, eliminar',
+                                            cancelButtonText: 'Cancelar',
+                                            confirmButtonColor: '#d33'
+                                        });
+                                        if (!res.isConfirmed) return;
                                         try {
                                             const response = await fetchDeleteHotelOfHotelAdmin(hotel.id, hotelAdminId);
                                             if (response) {
                                                 const hotelAdmin = await fetchHotelAdminById(hotelAdminId);
                                                 if (hotelAdmin) setHotels(hotelAdmin?.hotels);
+                                                showToast('success', <p>Hotel eliminado</p>);
                                             } else {
-                                                alert('Hubo un error al eliminar el hotel.')
+                                                showToast('error', <p>Hubo un error al eliminar el hotel.</p>, { autoClose: 3500 });
                                             }
                                         } catch (error) {
                                             console.log("Error deleting hotel admin: ", error);
+                                            showToast('error', <p>Error inesperado eliminando</p>);
                                         }
                                     }}
                                 >
