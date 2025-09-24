@@ -69,18 +69,6 @@ function DashboardNavbar() {
           </Link>
         )}
       </nav>
-      <div className="mx-4 mb-6">
-        <button className="flex items-center justify-center p-3 hover:text-gray-400 hover:bg-gray-700 focus:text-gray-700 focus:bg-gray-700 rounded-lg">
-          <span className="sr-only">Ajustes</span>
-          <Image
-            src="/settings.png"
-            alt="Ajustes"
-            width={48}
-            height={48}
-            className="rounded-lg"
-          />
-        </button>
-      </div>
     </div>
   );
 }

@@ -29,6 +29,12 @@ function Navbar() {
         <div className="hidden md:flex text-lg font-medium">
           <div className="flex items-center">
             <Link
+              href="/"
+              className="p-4 border-b-2 border-red-500 border-opacity-0 hover:border-opacity-100 hover:text-red-500 duration-200 cursor-pointer active"
+            >
+              Inicio
+            </Link>
+            <Link
               href="/home"
               className="p-4 border-b-2 border-red-500 border-opacity-0 hover:border-opacity-100 hover:text-red-500 duration-200 cursor-pointer active"
             >
@@ -39,12 +45,6 @@ function Navbar() {
               className="p-4 border-b-2 border-red-500 border-opacity-0 hover:border-opacity-100 hover:text-red-500 duration-200 cursor-pointer"
             >
               Servicios
-            </Link>
-            <Link
-              href="/recommendations"
-              className="p-4 border-b-2 border-red-500 border-opacity-0 hover:border-opacity-100 hover:text-red-500 duration-200 cursor-pointer"
-            >
-              Recomendaciones
             </Link>
             <Link
               href="/team"
@@ -76,7 +76,7 @@ function Navbar() {
             </button>
         </div>
 
-        <div className="md:hidden">
+        <div className="md:hidden flex flex-col items-center justify-center">
           <button onClick={() => setIsOpen(!isOpen)} className="text-red-500">
             <Image src={"/menu.png"} alt="menu" width={32} height={32} />
           </button>
@@ -84,6 +84,12 @@ function Navbar() {
         {isOpen && (
           <div className="absolute top-20 left-0 w-full bg-white shadow-md md:hidden">
             <div className="flex flex-col justify-center items-center">
+              <Link
+                href="/"
+                className="p-4 border-b-2 border-red-500 border-opacity-0 hover:border-opacity-100 hover:text-red-500 duration-200 cursor-pointer active"
+              >
+                Inicio
+              </Link>
               <Link
                 href="/home"
                 className="p-4 border-b-2 border-red-500 border-opacity-0 hover:border-opacity-100 hover:text-red-500 duration-200 cursor-pointer active"
@@ -95,12 +101,6 @@ function Navbar() {
                 className="p-4 border-b-2 border-red-500 border-opacity-0 hover:border-opacity-100 hover:text-red-500 duration-200 cursor-pointer"
               >
                 Servicios
-              </Link>
-              <Link
-                href="/recommendations"
-                className="p-4 border-b-2 border-red-500 border-opacity-0 hover:border-opacity-100 hover:text-red-500 duration-200 cursor-pointer"
-              >
-                Recomendaciones
               </Link>
               <Link
                 href="/team"
@@ -148,6 +148,12 @@ function Navbar() {
         <div className="hidden md:flex text-lg font-medium">
           <div className="flex items-center">
             <Link
+              href="/"
+              className="p-4 border-b-2 border-red-500 border-opacity-0 hover:border-opacity-100 hover:text-red-500 duration-200 cursor-pointer active"
+            >
+              Inicio
+            </Link>
+            <Link
               href="/home"
               className="p-4 border-b-2 border-red-500 border-opacity-0 hover:border-opacity-100 hover:text-red-500 duration-200 cursor-pointer active"
             >
@@ -158,12 +164,6 @@ function Navbar() {
               className="p-4 border-b-2 border-red-500 border-opacity-0 hover:border-opacity-100 hover:text-red-500 duration-200 cursor-pointer"
             >
               Servicios
-            </Link>
-            <Link
-              href="/recommendations"
-              className="p-4 border-b-2 border-red-500 border-opacity-0 hover:border-opacity-100 hover:text-red-500 duration-200 cursor-pointer"
-            >
-              Recomendaciones
             </Link>
             <Link
               href="/team"
@@ -188,14 +188,20 @@ function Navbar() {
           </div>
         </div>
 
-        <div className="md:hidden">
+        <div className="md:hidden flex flex-col items-center justify-center">
           <button onClick={() => setIsOpen(!isOpen)} className="text-red-500">
             <Image src={"/menu.png"} alt="menu" width={32} height={32} />
           </button>
         </div>
         {isOpen && (
-          <div className="absolute top-20 left-0 w-full bg-white shadow-md md:hidden">
+          <div className="absolute top-[60px] left-0 w-full bg-white shadow-md md:hidden">
             <div className="flex flex-col justify-center items-center">
+              <Link
+                href="/"
+                className="p-4 border-b-2 border-red-500 border-opacity-0 hover:border-opacity-100 hover:text-red-500 duration-200 cursor-pointer active"
+              >
+                Inicio
+              </Link>
               <Link
                 href="/home"
                 className="p-4 border-b-2 border-red-500 border-opacity-0 hover:border-opacity-100 hover:text-red-500 duration-200 cursor-pointer active"
@@ -209,12 +215,6 @@ function Navbar() {
                 Servicios
               </Link>
               <Link
-                href="/recommendations"
-                className="p-4 border-b-2 border-red-500 border-opacity-0 hover:border-opacity-100 hover:text-red-500 duration-200 cursor-pointer"
-              >
-                Recomendaciones
-              </Link>
-              <Link
                 href="/team"
                 className="p-4 border-b-2 border-red-500 border-opacity-0 hover:border-opacity-100 hover:text-red-500 duration-200 cursor-pointer"
               >
@@ -222,12 +222,12 @@ function Navbar() {
               </Link>
               <div className="flex flex-col items-center justify-center">
                 <Link href="/login">
-                  <button className="p-2 flex flex-col justify-center items-center font-medium">
+                  <button className="p-4 flex flex-col justify-center items-center font-medium">
                     Iniciar sesión
                   </button>
                 </Link>
                 <Link href="/register">
-                  <button className="p-2 flex justify-center items-center font-medium text-red-700">
+                  <button className="p-4 flex justify-center items-center font-medium text-red-700">
                     Registrarse
                   </button>
                 </Link>

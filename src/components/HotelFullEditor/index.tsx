@@ -1,5 +1,6 @@
 "use client";
 import { useEffect, useState, useCallback } from 'react';
+import { createPortal } from 'react-dom';
 import Swal from 'sweetalert2';
 import { showToast } from '@/lib/toast';
 import {
@@ -151,6 +152,16 @@ function RoomTypeCreateForm({ rtName, setRtName, rtCapacity, setRtCapacity, rtBe
 }
 
 export default function HotelFullEditor({ hotel, onClose, onUpdated, onDeleted, refreshHotels }: HotelFullEditorProps) {
+  const [mounted, setMounted] = useState(false);
+  useEffect(() => { setMounted(true); }, []);
+  // Lock scroll while modal open
+  useEffect(() => {
+    if (hotel) {
+      const prev = document.body.style.overflow;
+      document.body.style.overflow = 'hidden';
+      return () => { document.body.style.overflow = prev; };
+    }
+  }, [hotel]);
   const [activeTab, setActiveTab] = useState<TabKey>('hotel');
     const [deleting, setDeleting] = useState(false);
   const [loading, setLoading] = useState(false);
@@ -771,10 +782,10 @@ export default function HotelFullEditor({ hotel, onClose, onUpdated, onDeleted, 
     </div>
   );
 
-  return (
-    <div className="fixed inset-0 z-50 flex items-start md:items-center justify-center overflow-y-auto bg-black/50 p-4">
-      {/* Added top margin on small screens so the modal isn't hidden under sticky nav; center on md+ */}
-      <div className="bg-white w-full max-w-5xl rounded-lg shadow-lg p-6 relative animate-fade-in mt-16 md:mt-0">
+  if (!hotel || !mounted) return null;
+  return createPortal(
+    <div className="fixed inset-0 z-[2147483647] flex items-start md:items-center justify-center overflow-y-auto bg-black/50 p-4 isolation-auto">
+      <div className="bg-white w-full max-w-5xl rounded-lg shadow-lg p-6 relative animate-fade-in mt-16 md:mt-0 pointer-events-auto">
         <h2 className="text-2xl font-bold mb-2">Editar Hotel: <span className="text-red-600">{hotel.name}</span></h2>
         {renderTabs()}
         <div className="min-h-[300px]">
@@ -784,6 +795,7 @@ export default function HotelFullEditor({ hotel, onClose, onUpdated, onDeleted, 
         </div>
         <button onClick={onClose} className="absolute top-2 right-2 text-gray-500 hover:text-black" aria-label="Cerrar">✕</button>
       </div>
-    </div>
+    </div>,
+    document.body
   );
 }

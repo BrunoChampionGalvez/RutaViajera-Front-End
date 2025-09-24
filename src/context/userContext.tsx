@@ -212,37 +212,111 @@ export const UserProvider = ({ children }: { children: React.ReactNode }) => {
     }
   }, []);
 
-  const getBookingsByHotel = async (hotelId: string): Promise<IBooking[]> => {
-    const token = localStorage.getItem("token");
+  const getBookingsByHotel = useCallback(async (hotelId: string): Promise<IBooking[]> => {
+    const token = typeof window !== 'undefined' ? localStorage.getItem('token') : null;
     if (!token) {
-      console.error(
-        "No se encontró el token. Por favor, inicie sesión de nuevo."
-      );
+      console.error('No se encontró el token. Por favor, inicie sesión de nuevo.');
       return [];
+    }
+    if (!hotelId) return [];
+
+    // Simple per-hotel cache & in-flight guard on window to avoid infinite loops/spam
+    const g: any = globalThis as any;
+    g.__hotelBookingsCache = g.__hotelBookingsCache || new Map<string, IBooking[]>();
+    g.__hotelBookingsPending = g.__hotelBookingsPending || new Set<string>();
+
+    // Return cached result immediately (component may also keep its own local state)
+    if (g.__hotelBookingsCache.has(hotelId)) {
+      return g.__hotelBookingsCache.get(hotelId);
+    }
+    if (g.__hotelBookingsPending.has(hotelId)) {
+      // Another component already loading this hotel's bookings; wait briefly & return cached later
+      return new Promise<IBooking[]>((resolve) => {
+        const start = Date.now();
+        const poll = () => {
+          if (g.__hotelBookingsCache.has(hotelId)) return resolve(g.__hotelBookingsCache.get(hotelId));
+          if (Date.now() - start > 4000) return resolve([]); // timeout safeguard
+          setTimeout(poll, 120);
+        };
+        poll();
+      });
     }
 
     try {
-      const response = await fetch(
-        `${process.env.NEXT_PUBLIC_API_URL}/bookings/hotel/${hotelId}`,
-        {
-          headers: {
-            Authorization: `Bearer ${token}`,
-          },
-        }
-      );
-
+      g.__hotelBookingsPending.add(hotelId);
+      const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/bookings/hotel/${hotelId}`.replace(/([^:]?)\/\//g,'$1/'), {
+        headers: { Authorization: `Bearer ${token}` },
+      });
       if (!response.ok) {
-        throw new Error("Error al obtener reservas");
+        // 404 means no bookings; treat as empty cache to avoid re-fetch storm
+        if (response.status === 404) {
+          g.__hotelBookingsCache.set(hotelId, []);
+          return [];
+        }
+        throw new Error('Error al obtener reservas');
       }
-
       const data: IBooking[] = await response.json();
-      setBookings(data); // Guardamos las reservas en el estado
+      g.__hotelBookingsCache.set(hotelId, data);
       return data;
     } catch (error) {
-      console.error("Error al obtener reservas:", error);
+      console.error('Error al obtener reservas:', error);
       return [];
+    } finally {
+      g.__hotelBookingsPending.delete(hotelId);
     }
-  };
+  }, []);
+
+  const getBookingsByHotelAdmin = useCallback(async (hotelAdminId: string): Promise<IBooking[]> => {
+    if (!hotelAdminId) return [];
+    const token = typeof window !== 'undefined' ? localStorage.getItem('token') : null;
+    if (!token) return [];
+    const g: any = globalThis as any;
+    g.__adminBookingsCache = g.__adminBookingsCache || new Map<string, IBooking[]>();
+    g.__adminBookingsPending = g.__adminBookingsPending || new Set<string>();
+    if (g.__adminBookingsCache.has(hotelAdminId)) return g.__adminBookingsCache.get(hotelAdminId);
+    if (g.__adminBookingsPending.has(hotelAdminId)) {
+      return new Promise<IBooking[]>((resolve)=>{
+        const start = Date.now();
+        const poll = () => {
+          if (g.__adminBookingsCache.has(hotelAdminId)) return resolve(g.__adminBookingsCache.get(hotelAdminId));
+          if (Date.now()-start>4000) return resolve([]);
+          setTimeout(poll,120);
+        }; poll();
+      });
+    }
+    try {
+      g.__adminBookingsPending.add(hotelAdminId);
+      const resp = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/bookings/hotelAdminId/${hotelAdminId}`, { headers: { Authorization: `Bearer ${token}` }});
+      if (!resp.ok) {
+        if (resp.status === 404) { g.__adminBookingsCache.set(hotelAdminId, []); return []; }
+        throw new Error('Error al obtener bookings del admin');
+      }
+      const data: IBooking[] = await resp.json();
+      g.__adminBookingsCache.set(hotelAdminId, data);
+      return data;
+    } catch(err){
+      console.error(err); return [];
+    } finally {
+      g.__adminBookingsPending.delete(hotelAdminId);
+    }
+  }, []);
+
+  const getBookingsForHotelFromAdminCache = useCallback(async (hotelId: string, hotelAdminId?: string): Promise<IBooking[]> => {
+    if (!hotelId) return [];
+    const g: any = globalThis as any;
+    g.__adminBookingsCache = g.__adminBookingsCache || new Map<string, IBooking[]>();
+    let adminId = hotelAdminId;
+    if (!adminId && user?.id && isAdmin) adminId = user.id; // assuming token id == hotelAdmin id
+    if (adminId && g.__adminBookingsCache.has(adminId)) {
+      const all = g.__adminBookingsCache.get(adminId) as IBooking[];
+      return all.filter(b => b.bookingDetails?.hotel?.id === hotelId);
+    }
+    if (adminId) {
+      const all = await getBookingsByHotelAdmin(adminId);
+      return all.filter(b => b.bookingDetails?.hotel?.id === hotelId);
+    }
+    return [];
+  }, [user, isAdmin, getBookingsByHotelAdmin]);
 
   const getReviews = useCallback(async () => {
     try {
@@ -356,6 +430,9 @@ export const UserProvider = ({ children }: { children: React.ReactNode }) => {
         getBookingsByHotel,
         bookings,
         logOut,
+        // added helpers
+        getBookingsByHotelAdmin,
+        getBookingsForHotelFromAdminCache,
       }}
     >
       {children}

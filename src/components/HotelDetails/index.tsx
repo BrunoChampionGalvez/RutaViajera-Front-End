@@ -7,6 +7,7 @@ import Rating from "../Rating";
 import PostReview from "../PostReview";
 import BookingForm from "../BookingForm";
 import Image from "next/image";
+import { getApiBase } from "@/lib/apiBase";
 import { useContext, useEffect, useRef, useState } from "react";
 import { FaStar } from "react-icons/fa";
 import { UserContext } from "@/context/userContext";
@@ -87,20 +88,38 @@ const HotelDetail: React.FC<Props> = ({ hotel }) => {
     );
   }
 
+  const normalizeImageUrl = (url: string) => {
+    if (!url) return url;
+    if (/^https?:\/\//i.test(url)) return url; // already absolute
+    // If already starts with /uploads use API base
+    if (url.startsWith('/uploads/')) return `${getApiBase().replace(/\/$/, '')}${url}`;
+    // If it's something like uploads/... add leading slash then api base
+    if (url.startsWith('uploads/')) return `${getApiBase().replace(/\/$/, '')}/${url}`;
+    // Otherwise treat as relative path (Next public folder) so leave as-is
+    return url;
+  };
+
+  const firstImage = hotel.images && hotel.images.length > 0 ? normalizeImageUrl(hotel.images[0]) : undefined;
+
   return (
     <div className="flex flex-col items-center mx-auto w-4/5 mt-8">
       <div className="w-full mb-4">
         <div className="flex flex-col lg:flex-row w-full gap-6 h-auto lg:min-h-[380px]">
           <div className="relative flex-1 aspect-video lg:aspect-auto lg:h-96 overflow-hidden rounded-lg">
-            <Image
-              unoptimized
-              src={hotel.images[0]}
-              alt={hotel.name}
-              fill
-              priority
-              sizes="(max-width: 1024px) 100vw, 50vw"
-              className="object-cover"
-            />
+            {firstImage ? (
+              <Image
+                unoptimized
+                src={firstImage}
+                alt={hotel.name}
+                fill
+                priority
+                sizes="(max-width: 1024px) 100vw, 50vw"
+                className="object-cover"
+                onError={(e:any) => { console.warn('Fallo carga imagen detalle, src:', firstImage); (e.currentTarget as any).style.opacity = '0'; }}
+              />
+            ) : (
+              <div className="absolute inset-0 flex items-center justify-center bg-gray-100 text-gray-500 text-sm">Sin imagen</div>
+            )}
           </div>
           <div className="flex-1 mb-4 px-1 lg:px-0">
             <div className="flex flex-col lg:flex-row justify-between">

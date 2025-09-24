@@ -87,6 +87,9 @@ export interface IUserContextType {
   addNewHotel: (newHotel: IHotel) => void;
   removeHotel: (hotelId: string) => void;
   getBookingsByHotel: (hotelId: string) => Promise<IBooking[]>;
+  // Newly added helpers for optimized per-hotel booking retrieval via admin-wide cache
+  getBookingsByHotelAdmin?: (hotelAdminId: string) => Promise<IBooking[]>;
+  getBookingsForHotelFromAdminCache?: (hotelId: string, hotelAdminId?: string) => Promise<IBooking[]>;
   bookings: IBooking[];
   logOut: () => void;
 }

@@ -62,15 +62,15 @@ function Home() {
 
       {/* Mobile slide-in filter drawer */}
       <div
-        className={`md:hidden fixed top-0 left-0 h-full w-72 max-w-[80%] bg-red-600 shadow-xl z-40 transform transition-transform duration-300 ease-out flex flex-col ${mobileFiltersOpen ? 'translate-x-0' : '-translate-x-full'}`}
+        className={`md:hidden fixed top-0 left-0 h-full w-72 max-w-[80%] bg-white shadow-xl z-40 transform transition-transform duration-300 ease-out flex flex-col ${mobileFiltersOpen ? 'translate-x-0' : '-translate-x-full'}`}
         aria-hidden={!mobileFiltersOpen}
       >
-        <div className="flex items-center justify-between px-4 py-3 border-b border-red-500">
-          <h2 className="text-white font-semibold">Filtros</h2>
+        <div className="flex items-center justify-between px-4 py-3 border-b border-gray-200">
+          <h2 className="text-gray-900 font-semibold">Filtros</h2>
           <button
             onClick={closeFilters}
             aria-label="Cerrar filtros"
-            className="text-white p-2 rounded hover:bg-red-500 focus:outline-none focus:ring-2 focus:ring-white"
+            className="text-gray-600 p-2 rounded hover:bg-gray-100 focus:outline-none focus:ring-2 focus:ring-red-500"
           >
             <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><line x1="18" y1="6" x2="6" y2="18" /><line x1="6" y1="6" x2="18" y2="18" /></svg>
           </button>

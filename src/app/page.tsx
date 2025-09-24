@@ -2,6 +2,51 @@ import Image from "next/image";
 import Link from "next/link";
 import ReviewSlider from "@/components/ReviewsSlider";
 
+const landingTestimonials = [
+  {
+    id: "t1",
+    rating: 5,
+    comment:
+      "Excelente servicio y ubicación perfecta. Las habitaciones están muy limpias y el personal es muy amable.",
+    customerName: "María Fernanda",
+  },
+  {
+    id: "t2",
+    rating: 5,
+    comment:
+      "Hotel increíble con vistas espectaculares. La comida del restaurante es deliciosa y el spa es relajante.",
+    customerName: "Carlos Andrés",
+  },
+  {
+    id: "t3",
+    rating: 4,
+    comment:
+      "Muy buena relación calidad-precio. Las instalaciones están en perfecto estado y el desayuno es variado.",
+    customerName: "Laura Gómez",
+  },
+  {
+    id: "t4",
+    rating: 5,
+    comment:
+      "Lugar perfecto para descansar. El ambiente es tranquilo y las habitaciones son muy cómodas.",
+    customerName: "Juan Pérez",
+  },
+  {
+    id: "t5",
+    rating: 5,
+    comment:
+      "Atención de primera y ubicación inmejorable. Volvería sin dudarlo.",
+    customerName: "Sofía Martínez",
+  },
+  {
+    id: "t6",
+    rating: 4,
+    comment:
+      "Habitaciones cómodas y desayuno delicioso. Excelente relación calidad-precio.",
+    customerName: "Diego Ramírez",
+  },
+];
+
 export default function Landing() {
   return (
     <div>
@@ -17,21 +62,15 @@ export default function Landing() {
             priority
           />
         </div>
-        <div className="relative z-10 w-full text-center text-white flex justify-center items-center">
-          <div className="flex flex-col justify-center items-center p-4 sm:p-0 max-w-2xl">
-            <div className="flex flex-col sm:flex-row sm:items-center text-center sm:text-left mb-4">
-              <h1 className="title font-extrabold text-2xl sm:text-4xl">
+        <div className="relative z-10 w-full text-center text-white flex justify-center items-center h-full">
+          <div className="flex flex-col justify-end items-center p-4 sm:p-0 max-w-2xl">
+            <div className="flex flex-col sm:flex-row sm:items-center text-center sm:text-left sm:mb-4 mb-2">
+              <h1 className="title font-extrabold text-4xl sm:text-6xl">
                 RutaViajera
               </h1>
-              <p className="text-base sm:text-lg mx-2 mt-2 sm:mt-0 underline">
-                Donde cada viaje es una historia por contar.
-              </p>
             </div>
-            <h2 className="font-bold text-3xl sm:text-4xl mt-4 sm:mt-8">
-              Tu Aventura
-            </h2>
-            <h2 className="font-bold text-3xl sm:text-4xl mb-4 sm:mb-8">
-              Comienza Aquí
+            <h2 className="font-bold text-xl sm:text-2xl sm:mb-14 mb-8">
+              Tu Aventura Comienza Aquí
             </h2>
             <Link href={"/home"}>
               <button className="btn-primary text-xl sm:text-xl px-6 py-3">
@@ -87,7 +126,7 @@ export default function Landing() {
         <h3 className="font-medium text-gray-800 mb-4">
           ¿Qué dicen nuestros clientes?
         </h3>
-        <ReviewSlider />
+  <ReviewSlider items={landingTestimonials} />
       </div>
     </div>
   );

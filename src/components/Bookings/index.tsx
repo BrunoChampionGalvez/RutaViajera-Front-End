@@ -137,32 +137,26 @@ function Bookings() {
     return Array.from(map.values());
   };
 
-  const computeBookingTotal = (booking: IBooking) => {
-    // Derive per-room-type cost: price * nights * quantity.
+  // Display strategy: show backend total (source of truth). Optionally compute a derived value to flag discrepancies.
+  const getDisplayedTotal = (booking: IBooking) => {
+    const backend = booking.bookingDetails.total ?? 0;
     try {
-      const availabilityGroups = new Map<string, { price: number; quantity: number; nights: number }>();
+      // Group by roomtype and compute price * quantity * nights
+      const groups = new Map<string, { price: number; quantity: number; nights: number }>();
       booking.bookingDetails.availabilities.forEach(av => {
-        const rt = av.room?.roomtype;
-        if (!rt) return;
-        const start = new Date(av.startDate);
-        const end = new Date(av.endDate);
-        const nights = Math.max(1, Math.ceil((end.getTime() - start.getTime())/(1000*60*60*24)));
-        if (!availabilityGroups.has(rt.id)) {
-          availabilityGroups.set(rt.id, { price: rt.price ?? 0, quantity: 1, nights });
-        } else {
-          const g = availabilityGroups.get(rt.id)!;
-          g.quantity += 1;
-          // Use the max nights across availabilities of same type (assumes same stay)
-          g.nights = Math.max(g.nights, nights);
-        }
+        const rt = av.room?.roomtype; if (!rt) return;
+        const start = new Date(av.startDate).getTime();
+        const end = new Date(av.endDate).getTime();
+        const nights = Math.max(1, Math.ceil((end - start)/(1000*60*60*24)));
+        if (!groups.has(rt.id)) groups.set(rt.id, { price: rt.price ?? 0, quantity: 1, nights });
+        else groups.get(rt.id)!.quantity += 1;
       });
-      const recomputed = Array.from(availabilityGroups.values()).reduce((acc, g) => acc + g.price * g.quantity * g.nights, 0);
-      const backend = booking.bookingDetails.total || 0;
-      // If backend total wildly lower (e.g., difference > 1) show recomputed to avoid confusion
-      if (recomputed > 0 && Math.abs(recomputed - backend) > 1) return recomputed;
-      return backend;
+      const recalculated = Array.from(groups.values()).reduce((acc, g) => acc + g.price * g.quantity * g.nights, 0);
+      // If backend appears to be legacy (missing nights) difference will be (recalculated - backend) >= price*(nights-1)
+      const isLegacy = recalculated > backend && Math.abs(recalculated - backend) >= 1;
+      return { backend: isLegacy ? recalculated : backend, rawBackend: backend, recalculated, legacyFlag: isLegacy };
     } catch {
-      return booking.bookingDetails.total;
+      return { backend, rawBackend: backend, recalculated: backend, legacyFlag: false };
     }
   };
 
@@ -223,7 +217,17 @@ function Bookings() {
                             <div key={g.name}>{g.count}x {g.name}</div>
                           ))}
                         </td>
-                        <td className="py-3 px-4 font-semibold">${computeBookingTotal(booking)}</td>
+                        <td className="py-3 px-4 font-semibold">
+                          {(() => {
+                            const { backend, rawBackend, recalculated, legacyFlag } = getDisplayedTotal(booking);
+                            return (
+                              <span title={legacyFlag ? `Backend almacenó ${rawBackend}. Recalculado (con noches): ${recalculated}` : 'Total'}>
+                                ${backend}
+                                {legacyFlag && <sup className="ml-1 text-[10px] text-orange-600" title={`Total ajustado para incluir noches. Valor original: ${rawBackend}`}>*</sup>}
+                              </span>
+                            );
+                          })()}
+                        </td>
                         <td className="py-3 px-4">
                           {(() => {
                             const status = booking.bookingDetails.status;

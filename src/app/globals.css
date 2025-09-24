@@ -3,6 +3,9 @@
 @tailwind utilities;
 
 @import "flowbite/dist/flowbite.css";
+@import "swiper/css";
+@import "swiper/css/pagination";
+@import "swiper/css/navigation";
 
 .btn-primary {
   @apply bg-gradient-to-r from-[#ff9f2e] to-[#f8263a] font-medium text-white rounded-lg p-2 px-4 ml-3 hover:from-[#e68a26] hover:to-[#d71f32] focus:scale-95;
@@ -52,6 +55,8 @@ body {
 /* Ensure each slide's internal card is centered and consistent width */
 .myhotels-swiper .swiper-slide { align-items: stretch; }
 .myhotels-swiper .hotel-card { width:100%; max-width:380px; margin:0 auto; }
+
+/* Reviews slider: styles handled in component with Tailwind classes */
 
 /* Ensure any sidebar (if absolute/fixed) overlays below header but above content */
 .app-sidebar-layer {
