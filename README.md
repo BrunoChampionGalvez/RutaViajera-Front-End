@@ -1,37 +1,96 @@
-This is a [Next.js](https://nextjs.org/) project bootstrapped with [`create-next-app`](https://github.com/vercel/next.js/tree/canary/packages/create-next-app).
+## RutaViajera – Front-End (Next.js)
 
-## Getting Started
+Plataforma de reservas hoteleras: los usuarios pueden explorar y reservar habitaciones; los administradores de hotel publican y gestionan sus hoteles; un superadmin controla todo desde un dashboard.
 
-First, run the development server:
+Sitio desplegado: https://ruta-viajera-front-end.vercel.app/
 
-```bash
-npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
+Repositorio del Back-End (API): https://github.com/BrunoChampionGalvez/RutaViajera-Back-End
+
+### Tech stack
+
+- Next.js 14, React 18
+- Tailwind CSS
+- Integraciones: Google Maps, Cloudinary, PayPal, NextAuth (Google OAuth)
+
+## Requisitos
+
+- Node.js 18+ y npm
+
+## Configuración rápida
+
+1) Copia `.env.example` a `.env.local` y completa los valores.
+2) Asegúrate de que el Back-End esté corriendo en local o tengas su URL.
+
+Variables de entorno necesarias (placeholders):
+
+- NEXT_PUBLIC_API_URL: URL del backend (ej. http://localhost:3001)
+- NEXT_PUBLIC_GOOGLE_MAPS_API_KEY: clave del mapa
+- Autenticación (NextAuth + Google):
+	- GOOGLE_CLIENT_ID, GOOGLE_CLIENT_SECRET
+	- NEXTAUTH_URL (ej. http://localhost:3000), NEXTAUTH_SECRET
+- Pagos:
+	- NEXT_PUBLIC_PAYPAL_CLIENT_ID (SDK del cliente)
+	- PAYPAL_CLIENT_ID, PAYPAL_CLIENT_SECRET (para la ruta API del checkout)
+- Cloudinary (subida de imágenes):
+	- NEXT_PUBLIC_CLOUDINARY_CLOUD_NAME, NEXT_PUBLIC_CLOUDINARY_UPLOAD_PRESET
+	- NEXT_PUBLIC_CLOUDINARY_API_KEY, CLOUDINARY_API_SECRET
+- Otros:
+	- LOCAL_IMAGE_STORAGE=true para guardar imágenes localmente en desarrollo (carpeta `public/uploads`).
+
+Ejemplo mínimo de `.env.local`:
+
+```
+NEXT_PUBLIC_API_URL=http://localhost:3001
+
+# NextAuth + Google
+GOOGLE_CLIENT_ID=tu-google-client-id
+GOOGLE_CLIENT_SECRET=tu-google-client-secret
+NEXTAUTH_URL=http://localhost:3000
+NEXTAUTH_SECRET=tu-nextauth-secret
+
+# Google Maps
+NEXT_PUBLIC_GOOGLE_MAPS_API_KEY=tu-google-maps-api-key
+
+# PayPal
+NEXT_PUBLIC_PAYPAL_CLIENT_ID=tu-paypal-client-id
+PAYPAL_CLIENT_ID=tu-paypal-client-id
+PAYPAL_CLIENT_SECRET=tu-paypal-client-secret
+
+# Cloudinary
+NEXT_PUBLIC_CLOUDINARY_CLOUD_NAME=tu-cloud-name
+NEXT_PUBLIC_CLOUDINARY_UPLOAD_PRESET=tu-upload-preset
+NEXT_PUBLIC_CLOUDINARY_API_KEY=tu-cloudinary-api-key
+CLOUDINARY_API_SECRET=tu-cloudinary-api-secret
+
+# Desarrollo local de imágenes
+LOCAL_IMAGE_STORAGE=true
 ```
 
-Open [${process.env.NEXT_PUBLIC_API_URL}](${process.env.NEXT_PUBLIC_API_URL}) with your browser to see the result.
+## Ejecutar en local
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+1) Instalar dependencias
 
-This project uses [`next/font`](https://nextjs.org/docs/basic-features/font-optimization) to automatically optimize and load Inter, a custom Google Font.
+```powershell
+npm install
+```
 
-## Learn More
+2) Iniciar el servidor de desarrollo
 
-To learn more about Next.js, take a look at the following resources:
+```powershell
+npm run dev
+```
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+3) Abre http://localhost:3000 en el navegador.
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js/) - your feedback and contributions are welcome!
+Consejos:
+- Asegúrate de que `NEXT_PUBLIC_API_URL` apunte al backend correcto (por ejemplo, http://localhost:3001).
+- Para iniciar sesión con Google en local, configura los URIs de redirección en Google Cloud para NextAuth.
 
-## Deploy on Vercel
+## Producción
 
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
+- Build de producción: `npm run build`
+- Arranque: `npm start`
 
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/deployment) for more details.
-# RutaViajera-Front-End
+## Licencia
+
+MIT
