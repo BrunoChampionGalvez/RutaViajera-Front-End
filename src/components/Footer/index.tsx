@@ -24,7 +24,6 @@ const Footer = () => {
             </h5>
             <div className="flex flex-col space-y-1">
               <Link href="/history">Nuestra historia</Link>
-              <Link href="/team">Nuestro equipo</Link>
               <Link href="#">Integraciones</Link>
               <Link href="#">FAQ</Link>
             </div>
@@ -34,16 +33,6 @@ const Footer = () => {
             <div className="flex flex-col space-y-1">
               <Link href="/privacy-policy">Políticas de privacidad</Link>
               <Link href="/terms-conditions">Terminos y condiciones</Link>
-            </div>
-          </div>
-          <div className="space-y-3">
-            <h2 className="tracking-wide uppercase text-gray-900">
-              Desarrolladores
-            </h2>
-            <div className="flex flex-col space-y-1">
-              <Link href={"#"}>API Pública</Link>
-              <Link href={"#"}>Documentación</Link>
-              <Link href={"#"}>Guías</Link>
             </div>
           </div>
           <div className="space-y-3">
