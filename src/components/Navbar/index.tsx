@@ -47,10 +47,16 @@ function Navbar() {
               Servicios
             </Link>
             <Link
-              href="/team"
+              href="/nosotros"
               className="p-4 border-b-2 border-red-500 border-opacity-0 hover:border-opacity-100 hover:text-red-500 duration-200 cursor-pointer"
             >
               Nosotros
+            </Link>
+            <Link
+              href="/contacto"
+              className="p-4 border-b-2 border-red-500 border-opacity-0 hover:border-opacity-100 hover:text-red-500 duration-200 cursor-pointer"
+            >
+              Contacto
             </Link>
           </div>
         </div>
@@ -103,10 +109,16 @@ function Navbar() {
                 Servicios
               </Link>
               <Link
-                href="/team"
+                href="/nosotros"
                 className="p-4 border-b-2 border-red-500 border-opacity-0 hover:border-opacity-100 hover:text-red-500 duration-200 cursor-pointer"
               >
                 Nosotros
+              </Link>
+              <Link
+                href="/contacto"
+                className="p-4 border-b-2 border-red-500 border-opacity-0 hover:border-opacity-100 hover:text-red-500 duration-200 cursor-pointer"
+              >
+                Contacto
               </Link>
               <Link
                 href={isSuperAdmin ? "/superAdmin" : "/dashboard"}
@@ -166,10 +178,16 @@ function Navbar() {
               Servicios
             </Link>
             <Link
-              href="/team"
+              href="/nosotros"
               className="p-4 border-b-2 border-red-500 border-opacity-0 hover:border-opacity-100 hover:text-red-500 duration-200 cursor-pointer"
             >
               Nosotros
+            </Link>
+            <Link
+              href="/contacto"
+              className="p-4 border-b-2 border-red-500 border-opacity-0 hover:border-opacity-100 hover:text-red-500 duration-200 cursor-pointer"
+            >
+              Contacto
             </Link>
           </div>
         </div>
@@ -215,10 +233,16 @@ function Navbar() {
                 Servicios
               </Link>
               <Link
-                href="/team"
+                href="/nosotros"
                 className="p-4 border-b-2 border-red-500 border-opacity-0 hover:border-opacity-100 hover:text-red-500 duration-200 cursor-pointer"
               >
                 Nosotros
+              </Link>
+              <Link
+                href="/contacto"
+                className="p-4 border-b-2 border-red-500 border-opacity-0 hover:border-opacity-100 hover:text-red-500 duration-200 cursor-pointer"
+              >
+                Contacto
               </Link>
               <div className="flex flex-col items-center justify-center">
                 <Link href="/login">
