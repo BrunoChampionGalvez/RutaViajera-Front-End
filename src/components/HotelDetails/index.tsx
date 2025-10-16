@@ -155,6 +155,18 @@ const HotelDetail: React.FC<Props> = ({ hotel }) => {
                 center={mapCenter}
                 zoom={12}
                 mapContainerClassName="h-full"
+                options={{
+                  zoomControl: true,
+                  zoomControlOptions: {
+                    position: google.maps.ControlPosition.RIGHT_CENTER,
+                  },
+                  streetViewControl: false,
+                  mapTypeControl: false,
+                  fullscreenControl: true,
+                  fullscreenControlOptions: {
+                    position: google.maps.ControlPosition.TOP_RIGHT,
+                  },
+                }}
               >
                 {marker && marker.getPosition() && (
                   <Marker

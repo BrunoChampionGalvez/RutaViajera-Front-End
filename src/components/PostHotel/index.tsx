@@ -15,6 +15,7 @@ import { getApiBase } from "@/lib/apiBase";
 import { UserContext } from "@/context/userContext";
 import Link from "next/link";
 import { HotelContext } from "@/context/hotelContext";
+import AddressAutocomplete from "@/components/AddressAutocomplete";
 
 interface HotelRegisterProps {
   onHotelCreated?: (hotel: any) => void; // se tipará mejor luego con IHotel
@@ -503,18 +504,27 @@ const HotelRegister: React.FC<HotelRegisterProps> = ({ onHotelCreated, suppressR
                     <label htmlFor="address" className="formLabel">
                       Dirección
                     </label>
-                    <Field
-                      type="text"
-                      name="address"
-                      className="formInput"
+                    <AddressAutocomplete
+                      value={values.address}
+                      country={values.country}
+                      city={values.city}
                       placeholder="Dirección"
-                      onChange={(e: React.ChangeEvent<HTMLInputElement>) => {
-                        const address = e.target.value;
+                      className="formInput"
+                      onChange={(address: string) => {
+                        // Solo actualizar el valor del input, sin actualizar el mapa
+                        setFieldValue("address", address);
+                        onDraftChange?.({ address });
+                      }}
+                      onAddressSelected={(address: string, location: [number, number]) => {
+                        // Actualizar dirección y coordenadas cuando se selecciona del dropdown
+                        setFieldValue("address", address);
+                        setFieldValue("location", location);
+                        onDraftChange?.({ address, location });
+                        
+                        // Actualizar el mapa solo cuando se selecciona
                         const country = values.country;
                         const city = values.city;
                         setHotelLocation({ country, city, address });
-                        setFieldValue("address", address);
-                        onDraftChange?.({ address });
                       }}
                     />
                     <ErrorMessage
@@ -529,8 +539,16 @@ const HotelRegister: React.FC<HotelRegisterProps> = ({ onHotelCreated, suppressR
                       <GoogleMap
                         options={{
                           disableDefaultUI: true,
+                          zoomControl: true,
+                          zoomControlOptions: {
+                            position: google.maps.ControlPosition.RIGHT_CENTER,
+                          },
+                          fullscreenControl: true,
+                          fullscreenControlOptions: {
+                            position: google.maps.ControlPosition.TOP_RIGHT,
+                          },
                           clickableIcons: true,
-                          scrollwheel: false,
+                          scrollwheel: true,
                         }}
                         zoom={14}
                         center={mapCenter}
@@ -542,23 +560,6 @@ const HotelRegister: React.FC<HotelRegisterProps> = ({ onHotelCreated, suppressR
                     </div>
                   )}
 
-                  <div className="formDiv flex-1 mr-2">
-                    <label htmlFor="location" className="formLabel">
-                      Ubicación
-                    </label>
-                    <Field
-                      type="text"
-                      name="location"
-                      className="formInput"
-                      placeholder="Ubicación (lat, lng)"
-                      value={`${mapCenter.lat}, ${mapCenter.lng}`}
-                    />
-                    <ErrorMessage
-                      name="location"
-                      component="div"
-                      className="text-red-500"
-                    />
-                  </div>
                   <div className="formDiv flex-1 mr-2">
                     <label htmlFor="services" className="formLabel">
                       Servicios (separados por comas)
