@@ -160,6 +160,8 @@ export const validatePostHotel = (values: IHotelRegisterInitialValues) => {
 
   if (!values.address) {
     errors.address = "Dirección requerida";
+  } else if (values.address.length > 255) {
+    errors.address = "La dirección no debe tener más de 255 caracteres";
   }
 
   const validImageTypes = ['image/jpeg', 'image/png', 'image/gif', 'image/webp'];
